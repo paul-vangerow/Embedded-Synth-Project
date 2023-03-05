@@ -2,10 +2,11 @@
 #include <U8g2lib.h>
 #include <STM32FreeRTOS.h>
 #include <speaker.h>
+#include <numeric>
 
 // ------- Member Variable Definitions ------ //
 
-    volatile int32_t Speaker::currentStepSize = 0;
+    volatile int32_t Speaker::stepsActive = 0;
     volatile int32_t Speaker::volume = 4;
 
     const int32_t Speaker::stepSizes[] = {51076057,
@@ -27,11 +28,20 @@
 // ------------ Member Functions ------------ //
 
     void Speaker::soundISR() {
-        static int32_t phaseAcc = 0;
-        phaseAcc += currentStepSize;
-        int32_t Vout = phaseAcc >> 24;
-        Vout = Vout >> ( 8 - volume );
-        analogWrite(OUTR_PIN, Vout + 128);
+        static int32_t phaseAcc[12] = {0}; // Init at 0
+        int32_t Vout[12] = {0};
+        int num_of_notes = 0;
+        for (int i = 0; i < 12; i++){
+            uint8_t tmp = (((stepsActive >> i) & 0x1) != 0);
+            phaseAcc[i] += tmp ? stepSizes[i] : 0;
+            num_of_notes += tmp ? 1 : 0;
+            Vout[i] = (phaseAcc[i] >> 24) + 128;
+        }
+
+        int32_t total_out = (num_of_notes != 0) ? (std::accumulate(std::begin(Vout), std::end(Vout), 0) / num_of_notes) : 0;
+
+        total_out = total_out >> ( 8 - volume );
+        analogWrite(OUTR_PIN, total_out);
     }
 
     void Speaker::initialise_speaker(){
@@ -55,17 +65,19 @@
         while(1) {
             vTaskDelayUntil( &xLastWakeTime, xFrequency );
 
-            int32_t local_stepSize = 0;
+            int32_t local_stepsActive = 0;
             int32_t local_volume = 0;
 
             // Any Speaker - Key Interaction will take place within this semaphore
 
             KeyScanner::semaphoreTake();
+
+            // A bit Janky, but shouldn't cause performance issues
+
+            
             
             for (int i = 0 ; i<12; i++){
-                if (KeyScanner::notes_pressed[i]){
-                    local_stepSize = stepSizes[i];
-                }
+                local_stepsActive += KeyScanner::notes_pressed[i] << i;
             }
 
             local_volume = KeyScanner::volume_nob;
@@ -73,6 +85,6 @@
             KeyScanner::semaphoreGive();
 
             __atomic_store_n(&volume, local_volume, __ATOMIC_RELAXED); // Set Volume
-            __atomic_store_n(&currentStepSize, local_stepSize, __ATOMIC_RELAXED); // Set Note
+            __atomic_store_n(&stepsActive, local_stepsActive, __ATOMIC_RELAXED); // Set Note
         }
     }

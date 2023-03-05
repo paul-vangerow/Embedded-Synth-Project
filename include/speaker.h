@@ -17,7 +17,7 @@ public:
 
 private:
 
-    static volatile int32_t currentStepSize;
+    static volatile int32_t stepsActive;
     static volatile int32_t volume;
     static const int32_t stepSizes[];
 
