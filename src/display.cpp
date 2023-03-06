@@ -34,6 +34,7 @@
             u8g2.setFont(u8g2_font_ncenB08_tr); // choose a suitable font
             String Keys = "";
             int Vol = 0;
+            int Shape = 0;
 
             KeyScanner::semaphoreTake();
             
@@ -41,13 +42,16 @@
                 Keys += KeyScanner::notes_pressed[i] ? notes[i] : " ";
                 Keys += " ";
             }
-            Vol = KeyScanner::volume_nob;
+            Vol = (KeyScanner::volume_nob / 2) ;
+            Shape = (KeyScanner::shape_nob / 2) ;
 
             KeyScanner::semaphoreGive();
 
             u8g2.setCursor(100,10);
             u8g2.print(Vol);
-            u8g2.setCursor(2,20);
+            u8g2.setCursor(100,20);
+            u8g2.print(Shape);
+            u8g2.setCursor(2,30);
             u8g2.print(Keys);
 
             u8g2.sendBuffer();          // transfer internal memory to the display

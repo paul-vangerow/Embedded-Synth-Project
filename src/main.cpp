@@ -44,7 +44,7 @@ void setup() {
   xTaskCreate(
     Speaker::speakerUpdateTask,		/* Function that implements the task */
     "speakerUpdate",		/* Text name for the task */
-    64,      		/* Stack size in words, not bytes */
+    128,      		/* Stack size in words, not bytes */
     NULL,			/* Parameter passed into the task */
     3,			/* Task priority */
     &speakerUpdateHandle /* Pointer to store the task handle */

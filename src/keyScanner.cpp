@@ -22,8 +22,13 @@
 
     // Volume
     volatile int32_t KeyScanner::volume_nob = 0;
-    uint8_t KeyScanner::prev_vol_state = 0; 
     bool KeyScanner::vol_dir = false; // False = Left
+
+    // Signal Shape
+    volatile int32_t KeyScanner::shape_nob = 0;
+    bool KeyScanner::shape_dir = false; // False = Left
+
+    uint8_t KeyScanner::prev_row3_state = 0; 
 
 // --------- Functions ---------- //
 
@@ -85,6 +90,21 @@
         digitalWrite(REN_PIN,LOW);
     }
 
+    void KeyScanner::getNobChange(uint8_t curr_state, uint8_t prev_state, bool* cur_dir, volatile int32_t* val){
+        
+        if ((prev_state == 0x0 && curr_state == 0x1) || 
+            (prev_state == 0x3 && curr_state == 0x2)) {
+            *cur_dir = true;
+        }
+        if ((prev_state == 0x1 && curr_state == 0x0) || 
+            (prev_state == 0x2 && curr_state == 0x3)) {
+            *cur_dir = false;
+        }
+
+        // Increment / Decrement based on Dir (If no state transiton = didn't turn)
+        *val += (prev_state == curr_state) ? 0 : (*cur_dir ? ((*val == 16) ? 0 : 1) : ((*val == 0) ? 0 : -1));
+    }
+
     // To be run by the RTOS in a seperate Thread
     void KeyScanner::scanKeysTask(void * pvParameters) {
 
@@ -94,7 +114,7 @@
         while (1) {
             vTaskDelayUntil( &xLastWakeTime, xFrequency );
 
-            for (int row = 0; row <= 7; row++){
+            for (int row = 0; row <= 6; row++){
 
                 setRow(row);
                 delayMicroseconds(3);
@@ -113,25 +133,16 @@
                     notes_pressed[row*4 + 3] = (read_value & 0x8) == 0;
                 }
 
-                // Volume Nob Row (NEEDS WORK!)
+                // Volume Nob Row
                 if (row == 3){
-                    uint8_t v_bits = read_value & 0x3; // Bits we actually care about for this.
-                    bool transition = false;
 
-                    if ((prev_vol_state == 0x0 && v_bits == 0x1) || 
-                        (prev_vol_state == 0x3 && v_bits == 0x2)) {
-                        vol_dir = true;
-                    }
-                    if ((prev_vol_state == 0x1 && v_bits == 0x0) || 
-                        (prev_vol_state == 0x2 && v_bits == 0x3)) {
-                        vol_dir = false;
-                    }
-                    
-                    if ( prev_vol_state != v_bits ){ // Increment / Decrement based on Dir (If no state transiton = didn't turn)
-                        volume_nob += vol_dir ? ((volume_nob == 8) ? 0 : 1) : ((volume_nob == 0) ? 0 : -1);
-                    }
+                    // Volume Nob
+                    getNobChange(read_value & 0x3, prev_row3_state & 0x3, &vol_dir, &volume_nob);
 
-                    prev_vol_state = v_bits; // Set Previous State to Current
+                    // Shape Nob
+                    getNobChange((read_value>>2) & 0x3, (prev_row3_state>>2) & 0x3, &shape_dir, &shape_nob);
+
+                    prev_row3_state = read_value; // Set Previous State to Current
                 }
 
                 semaphoreGive();

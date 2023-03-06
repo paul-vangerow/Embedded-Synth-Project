@@ -3,13 +3,15 @@
 #include <STM32FreeRTOS.h>
 #include <speaker.h>
 #include <numeric>
+#include <math.h>
 
 // ------- Member Variable Definitions ------ //
 
     volatile int32_t Speaker::stepsActive = 0;
-    volatile int32_t Speaker::volume = 4;
+    volatile int32_t Speaker::volume = 0;
+    volatile int32_t Speaker::shape = 0;
 
-    const int32_t Speaker::stepSizes[] = {51076057,
+    const int32_t Speaker::stepSizes[12] = {51076057,
                                         54113197,
                                         57330935,
                                         60740010,
@@ -25,28 +27,49 @@
     const int Speaker::OUTL_PIN = A4;
     const int Speaker::OUTR_PIN = A3;
 
+    uint8_t Speaker::sineTable[256];
+
 // ------------ Member Functions ------------ //
 
+    // Play the Sound 
     void Speaker::soundISR() {
         static int32_t phaseAcc[12] = {0}; // Init at 0
-        int32_t Vout[12] = {0};
-        int num_of_notes = 0;
+        int32_t total_vout = 0;
+        uint8_t mag_div = 12;
+
         for (int i = 0; i < 12; i++){
-            uint8_t tmp = (((stepsActive >> i) & 0x1) != 0);
-            phaseAcc[i] += tmp ? stepSizes[i] : 0;
-            num_of_notes += tmp ? 1 : 0;
-            Vout[i] = (phaseAcc[i] >> 24) + 128;
+            phaseAcc[i] += (((stepsActive >> i) & 0x1) != 0) ? stepSizes[i] : 0;
+            uint8_t point_val = (phaseAcc[i] >> 24) + 128;
+
+            switch(shape){
+                case 1:
+                    total_vout += sineTable[point_val];
+                    mag_div = 3;
+                    break;
+                default:
+                    total_vout += point_val;
+                    mag_div = 12;
+                    break;
+            }
         }
 
-        int32_t total_out = (num_of_notes != 0) ? (std::accumulate(std::begin(Vout), std::end(Vout), 0) / num_of_notes) : 0;
+        // Divide by notes to maintain note integrity
 
-        total_out = total_out >> ( 8 - volume );
-        analogWrite(OUTR_PIN, total_out);
+        total_vout = (total_vout / mag_div) >> ( 8 - volume );
+        analogWrite(OUTR_PIN, total_vout);
+    }
+
+    void Speaker::createSineTable(){
+        for (int i = 0 ; i < 256; i ++){
+            sineTable[i] = abs( 128.0 * ( sin( (i/255.0) * 2.0 * PI ) ));
+        }
     }
 
     void Speaker::initialise_speaker(){
         pinMode(OUTL_PIN, OUTPUT);
         pinMode(OUTR_PIN, OUTPUT);
+
+        createSineTable();
 
         TIM_TypeDef *Instance = TIM1;
         HardwareTimer *sampleTimer = new HardwareTimer(Instance);
@@ -67,24 +90,24 @@
 
             int32_t local_stepsActive = 0;
             int32_t local_volume = 0;
+            int32_t local_shape = 0;
 
             // Any Speaker - Key Interaction will take place within this semaphore
 
             KeyScanner::semaphoreTake();
 
             // A bit Janky, but shouldn't cause performance issues
-
-            
-            
             for (int i = 0 ; i<12; i++){
                 local_stepsActive += KeyScanner::notes_pressed[i] << i;
             }
 
-            local_volume = KeyScanner::volume_nob;
+            local_volume = (KeyScanner::volume_nob / 2);
+            local_shape = (KeyScanner::shape_nob / 2);
 
             KeyScanner::semaphoreGive();
 
             __atomic_store_n(&volume, local_volume, __ATOMIC_RELAXED); // Set Volume
+            __atomic_store_n(&shape, local_shape, __ATOMIC_RELAXED); // Set Shape
             __atomic_store_n(&stepsActive, local_stepsActive, __ATOMIC_RELAXED); // Set Note
         }
     }
