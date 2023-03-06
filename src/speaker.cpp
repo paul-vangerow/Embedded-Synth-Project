@@ -38,16 +38,21 @@
         uint8_t mag_div = 12;
 
         for (int i = 0; i < 12; i++){
-            phaseAcc[i] += (((stepsActive >> i) & 0x1) != 0) ? stepSizes[i] : 0;
+            phaseAcc[i] += (((stepsActive >> i) & 0x1) != 0) ? stepSizes[i] : -1*phaseAcc[i]; // Reset accumulators (Randomly increases amplitude otherwise)
             uint8_t point_val = (phaseAcc[i] >> 24) + 128;
 
+            // Sound Wave Shape
             switch(shape){
                 case 1:
-                    total_vout += sineTable[point_val];
+                    total_vout += sineTable[point_val]; // Sine Wave
                     mag_div = 3;
                     break;
+                case 2:
+                    total_vout += (point_val > 128) ? 255 : 0; // Square Wave 
+                    mag_div = 12;
+                    break;
                 default:
-                    total_vout += point_val;
+                    total_vout += point_val; // Sawtooth Wave
                     mag_div = 12;
                     break;
             }

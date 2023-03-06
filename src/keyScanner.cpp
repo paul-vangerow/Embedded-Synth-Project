@@ -126,7 +126,7 @@
                 // keyArray[row] = read_value;  // Might be able to get rid of (Don't think there will be much Use in this)
 
                 // Key Rows 
-                if (row <= 2){ 
+                if (row <= 2){
                     notes_pressed[row*4] = (read_value & 0x1) == 0;
                     notes_pressed[row*4 + 1] = (read_value & 0x2) == 0;
                     notes_pressed[row*4 + 2] = (read_value & 0x4) == 0;
