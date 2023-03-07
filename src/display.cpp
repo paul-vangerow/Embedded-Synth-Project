@@ -35,6 +35,7 @@
             String Keys = "";
             int Vol = 0;
             int Shape = 0;
+            int Oct = 0;
 
             KeyScanner::semaphoreTake();
             
@@ -44,11 +45,14 @@
             }
             Vol = (KeyScanner::volume_nob / 2) ;
             Shape = (KeyScanner::shape_nob / 2) ;
+            Oct = (KeyScanner::octave_nob / 2) ;
 
             KeyScanner::semaphoreGive();
 
             u8g2.setCursor(100,10);
             u8g2.print(Vol);
+            u8g2.setCursor(110,10);
+            u8g2.print(Oct + 1);
             u8g2.setCursor(100,20);
             u8g2.print(Shape);
             u8g2.setCursor(2,30);

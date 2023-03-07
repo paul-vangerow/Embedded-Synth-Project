@@ -28,7 +28,12 @@
     volatile int32_t KeyScanner::shape_nob = 0;
     bool KeyScanner::shape_dir = false; // False = Left
 
+     // Octave
+    volatile int32_t KeyScanner::octave_nob = 8;
+    bool KeyScanner::oct_dir = false; // False = Left
+
     uint8_t KeyScanner::prev_row3_state = 0; 
+    uint8_t KeyScanner::prev_row4_state = 0; 
 
 // --------- Functions ---------- //
 
@@ -90,7 +95,7 @@
         digitalWrite(REN_PIN,LOW);
     }
 
-    void KeyScanner::getNobChange(uint8_t curr_state, uint8_t prev_state, bool* cur_dir, volatile int32_t* val){
+    void KeyScanner::getNobChange(uint8_t curr_state, uint8_t prev_state, bool* cur_dir, volatile int32_t* val, uint8_t max, uint8_t min){
         
         if ((prev_state == 0x0 && curr_state == 0x1) || 
             (prev_state == 0x3 && curr_state == 0x2)) {
@@ -102,7 +107,7 @@
         }
 
         // Increment / Decrement based on Dir (If no state transiton = didn't turn)
-        *val += (prev_state == curr_state) ? 0 : (*cur_dir ? ((*val == 16) ? 0 : 1) : ((*val == 0) ? 0 : -1));
+        *val += (prev_state == curr_state) ? 0 : (*cur_dir ? ((*val == max) ? 0 : 1) : ((*val == min) ? 0 : -1));
     }
 
     // To be run by the RTOS in a seperate Thread
@@ -133,16 +138,25 @@
                     notes_pressed[row*4 + 3] = (read_value & 0x8) == 0;
                 }
 
-                // Volume Nob Row
+                // Volume / Shape Nobs
                 if (row == 3){
 
                     // Volume Nob
-                    getNobChange(read_value & 0x3, prev_row3_state & 0x3, &vol_dir, &volume_nob);
+                    getNobChange(read_value & 0x3, prev_row3_state & 0x3, &vol_dir, &volume_nob, 16, 0);
 
                     // Shape Nob
-                    getNobChange((read_value>>2) & 0x3, (prev_row3_state>>2) & 0x3, &shape_dir, &shape_nob);
+                    getNobChange((read_value>>2) & 0x3, (prev_row3_state>>2) & 0x3, &shape_dir, &shape_nob, 16, 0);
 
                     prev_row3_state = read_value; // Set Previous State to Current
+                }
+
+                // Octave Nob
+                if (row == 4){
+
+                    // Octave Nob
+                    getNobChange(read_value & 0x3, prev_row4_state & 0x3, &oct_dir, &octave_nob, 14, 0);
+
+                    prev_row4_state = read_value; // Set Previous State to Current
                 }
 
                 semaphoreGive();

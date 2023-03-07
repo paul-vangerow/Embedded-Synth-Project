@@ -10,19 +10,13 @@
     volatile int32_t Speaker::stepsActive = 0;
     volatile int32_t Speaker::volume = 0;
     volatile int32_t Speaker::shape = 0;
+    volatile int32_t Speaker::octave = 0;
 
-    const int32_t Speaker::stepSizes[12] = {51076057,
-                                        54113197,
-                                        57330935,
-                                        60740010,
-                                        64351799,
-                                        68178356,
-                                        72232452,
-                                        76527617,
-                                        81078186,
-                                        85899346,
-                                        91007187,
-                                        96418756};
+    // Steps for 12 Notes.
+    int32_t Speaker::stepSizes[96] = {0};
+
+    //  = {51076057, 54113197, 57330935, 60740010, 64351799, 68178356,
+    //                                     72232452, 76527617, 81078186, 85899346, 91007187, 96418756}
 
     const int Speaker::OUTL_PIN = A4;
     const int Speaker::OUTR_PIN = A3;
@@ -38,7 +32,8 @@
         uint8_t mag_div = 12;
 
         for (int i = 0; i < 12; i++){
-            phaseAcc[i] += (((stepsActive >> i) & 0x1) != 0) ? stepSizes[i] : -1*phaseAcc[i]; // Reset accumulators (Randomly increases amplitude otherwise)
+            phaseAcc[i] += (((stepsActive >> i) & 0x1) != 0) ? stepSizes[ octave + i] : -1*phaseAcc[i]; // Reset accumulators (Randomly increases amplitude otherwise)
+            
             uint8_t point_val = (phaseAcc[i] >> 24) + 128;
 
             // Sound Wave Shape
@@ -65,8 +60,20 @@
     }
 
     void Speaker::createSineTable(){
+
+        // ABS value of Sine wave 
         for (int i = 0 ; i < 256; i ++){
-            sineTable[i] = abs( 128.0 * ( sin( (i/255.0) * 2.0 * PI ) ));
+            sineTable[i] = abs(128.0 * ( sin( (i/255.0) * 2.0 * PI ) ));
+        }
+    }
+
+    void Speaker::generateStepSizes(){
+
+        // Generate Step Sizes for all keys (Actually will end up being more than 7.25 octaves)
+
+        // 440Hz at Key 58
+        for (int i = 0; i < 96; i++){
+            stepSizes[i] = (powl(2.0, 32.0) / 22000.0) * (powl(2.0, ( (i-46.0)/12.0 ) ) * 440.0);
         }
     }
 
@@ -74,6 +81,7 @@
         pinMode(OUTL_PIN, OUTPUT);
         pinMode(OUTR_PIN, OUTPUT);
 
+        generateStepSizes();
         createSineTable();
 
         TIM_TypeDef *Instance = TIM1;
@@ -82,7 +90,7 @@
         sampleTimer->setOverflow(22000, HERTZ_FORMAT);
         sampleTimer->attachInterrupt(Speaker::soundISR);
         sampleTimer->resume();
-    };
+    }
 
     // Speaker Update Task (To be Invoked by RTOS)
 
@@ -96,6 +104,7 @@
             int32_t local_stepsActive = 0;
             int32_t local_volume = 0;
             int32_t local_shape = 0;
+            int32_t local_octave = 0;
 
             // Any Speaker - Key Interaction will take place within this semaphore
 
@@ -108,11 +117,13 @@
 
             local_volume = (KeyScanner::volume_nob / 2);
             local_shape = (KeyScanner::shape_nob / 2);
+            local_octave = ( (KeyScanner::octave_nob / 2) * 12);
 
             KeyScanner::semaphoreGive();
 
             __atomic_store_n(&volume, local_volume, __ATOMIC_RELAXED); // Set Volume
             __atomic_store_n(&shape, local_shape, __ATOMIC_RELAXED); // Set Shape
+            __atomic_store_n(&octave, local_octave, __ATOMIC_RELAXED); // Set Octave
             __atomic_store_n(&stepsActive, local_stepsActive, __ATOMIC_RELAXED); // Set Note
         }
     }

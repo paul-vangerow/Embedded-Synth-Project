@@ -20,7 +20,8 @@ private:
     static volatile int32_t stepsActive;
     static volatile int32_t volume;
     static volatile int32_t shape;
-    static const int32_t stepSizes[];
+    static volatile int32_t octave;
+    static int32_t stepSizes[];
 
     static const int OUTL_PIN;
     static const int OUTR_PIN;
@@ -28,6 +29,7 @@ private:
     static uint8_t sineTable[256];
 
     static void createSineTable();
+    static void generateStepSizes();
     Speaker();
 };
 
