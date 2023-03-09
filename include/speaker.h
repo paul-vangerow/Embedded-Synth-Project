@@ -15,12 +15,12 @@ public:
     static void initialise_speaker();
     static void speakerUpdateTask(void * pvParameter);
 
-private:
-
     static volatile int32_t stepsActive;
     static volatile int32_t volume;
     static volatile int32_t shape;
     static volatile int32_t octave;
+
+private:
     static int32_t stepSizes[];
 
     static const int OUTL_PIN;

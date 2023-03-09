@@ -32,24 +32,16 @@
             //Update display
             u8g2.clearBuffer();         // clear the internal memory
             u8g2.setFont(u8g2_font_ncenB08_tr); // choose a suitable font
-            String Keys = "";
-            int Vol = 0;
-            int Shape = 0;
-            int Oct = 0;
 
-            KeyScanner::semaphoreTake();
-            
-            for (int i = 0 ; i<12; i++){
-                Keys += KeyScanner::notes_pressed[i] ? notes[i] : " ";
-                Keys += " ";
-            }
-            Vol = (KeyScanner::volume_nob / 2) ;
-            Shape = (KeyScanner::shape_nob / 2) ;
-            Oct = (KeyScanner::octave_nob / 2) ;
+            // Load Values 
 
-            KeyScanner::semaphoreGive();
+            String Keys = ""; // [IMPLEMENT LATER]
+            int Vol = __atomic_load_n(&Speaker::volume, __ATOMIC_RELAXED);
+            int Shape = __atomic_load_n(&Speaker::shape, __ATOMIC_RELAXED);;
+            int Oct = __atomic_load_n(&Speaker::octave, __ATOMIC_RELAXED);;
 
-            CAN_Class::TX_Message[0];
+
+            // Print to Screen
 
             u8g2.setCursor(100,10);
             u8g2.print(Vol);

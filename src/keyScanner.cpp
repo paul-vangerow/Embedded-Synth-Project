@@ -16,24 +16,22 @@
 // ------ Other Variables ------ //
 
     // Keys
-    SemaphoreHandle_t KeyScanner::keyArrayMutex;
-    volatile uint8_t KeyScanner::keyArray[7];
-    volatile bool KeyScanner::notes_pressed[12];
+    uint8_t KeyScanner::prev_pressed[3];
 
     // Volume
-    volatile int32_t KeyScanner::volume_nob = 0;
+    int32_t KeyScanner::volume_nob = 0;
     bool KeyScanner::vol_dir = false; // False = Left
 
     // Signal Shape
-    volatile int32_t KeyScanner::shape_nob = 0;
+    int32_t KeyScanner::shape_nob = 0;
     bool KeyScanner::shape_dir = false; // False = Left
 
      // Octave
-    volatile int32_t KeyScanner::octave_nob = 8;
+    int32_t KeyScanner::octave_nob = 8;
     bool KeyScanner::oct_dir = false; // False = Left
 
     uint8_t KeyScanner::prev_row3_state = 0; 
-    uint8_t KeyScanner::prev_row4_state = 0; 
+    uint8_t KeyScanner::prev_row4_state = 0;
 
 // --------- Functions ---------- //
 
@@ -68,19 +66,6 @@
         pinMode(COL_IN[3], INPUT);
         pinMode(JOYXY_PIN[0], INPUT);
         pinMode(JOYXY_PIN[1], INPUT);
-
-        // Create mutex for Key Reading (All Keys will be stored in volatile )
-        keyArrayMutex = xSemaphoreCreateMutex();
-    }
-
-    // Lock KeyScanner Variables for use in another thread
-    void KeyScanner::semaphoreTake(){
-        xSemaphoreTake(keyArrayMutex, portMAX_DELAY);
-    }
-
-    // Open KeyScanner Variables for use in another thread
-    void KeyScanner::semaphoreGive(){
-        xSemaphoreGive(keyArrayMutex);
     }
 
     //Function to set outputs using key matrix (For Initialising the Display)
@@ -95,7 +80,7 @@
         digitalWrite(REN_PIN,LOW);
     }
 
-    void KeyScanner::getNobChange(uint8_t curr_state, uint8_t prev_state, bool* cur_dir, volatile int32_t* val, uint8_t max, uint8_t min){
+    void KeyScanner::getNobChange(uint8_t curr_state, uint8_t prev_state, bool* cur_dir, int32_t* val, uint8_t max, uint8_t min, uint8_t prop){
         
         if ((prev_state == 0x0 && curr_state == 0x1) || 
             (prev_state == 0x3 && curr_state == 0x2)) {
@@ -107,7 +92,16 @@
         }
 
         // Increment / Decrement based on Dir (If no state transiton = didn't turn)
-        *val += (prev_state == curr_state) ? 0 : (*cur_dir ? ((*val == max) ? 0 : 1) : ((*val == min) ? 0 : -1));
+        int32_t val_change = (prev_state == curr_state) ? 0 : (*cur_dir ? ((*val == max) ? 0 : 1) : ((*val == min) ? 0 : -1));
+        
+        if (val_change != 0){
+            *val += val_change;
+
+            // If the Value of the nob has changed, communicate it.
+
+            uint8_t nob_msg[8] = {prop, (*val >> 1)};
+            CAN_Class::addMessageToQueue(nob_msg);
+        }
     }
 
     // To be run by the RTOS in a seperate Thread
@@ -122,30 +116,41 @@
             for (int row = 0; row <= 6; row++){
 
                 setRow(row);
+
+                digitalWrite(OUT_PIN, HIGH);
+
                 delayMicroseconds(3);
 
                 uint8_t read_value = readCols();
 
-                semaphoreTake();
-
-                // keyArray[row] = read_value;  // Might be able to get rid of (Don't think there will be much Use in this)
-
                 // Key Rows 
                 if (row <= 2){
-                    notes_pressed[row*4] = (read_value & 0x1) == 0;
-                    notes_pressed[row*4 + 1] = (read_value & 0x2) == 0;
-                    notes_pressed[row*4 + 2] = (read_value & 0x4) == 0;
-                    notes_pressed[row*4 + 3] = (read_value & 0x8) == 0;
+
+                    uint8_t key_msg[8] = {'P', 'X', 'X'};
+
+                    // Check for a change in presses
+                    if (prev_pressed[row] ^ read_value != 0){
+
+                        // Check each one
+                        for (int i = 0; i < 4; i++){
+                            if ( ((prev_pressed[row] >> i) & 0x1) ^ ((read_value >> i) & 0x1) ){
+                                key_msg[0] = ((prev_pressed[row] >> i) & 0x1) ? 'P' : 'R';
+                                key_msg[2] = row*4 + i;
+                                CAN_Class::addMessageToQueue(key_msg);
+                            }
+                        }
+                        prev_pressed[row] = read_value;
+                    }
                 }
 
                 // Volume / Shape Nobs
                 if (row == 3){
 
                     // Volume Nob
-                    getNobChange(read_value & 0x3, prev_row3_state & 0x3, &vol_dir, &volume_nob, 16, 0);
+                    getNobChange(read_value & 0x3, prev_row3_state & 0x3, &vol_dir, &volume_nob, 16, 0, 'V');
 
                     // Shape Nob
-                    getNobChange((read_value>>2) & 0x3, (prev_row3_state>>2) & 0x3, &shape_dir, &shape_nob, 16, 0);
+                    getNobChange((read_value>>2) & 0x3, (prev_row3_state>>2) & 0x3, &shape_dir, &shape_nob, 16, 0, 'S');
 
                     prev_row3_state = read_value; // Set Previous State to Current
                 }
@@ -154,12 +159,19 @@
                 if (row == 4){
 
                     // Octave Nob
-                    getNobChange(read_value & 0x3, prev_row4_state & 0x3, &oct_dir, &octave_nob, 14, 0);
-
+                    getNobChange(read_value & 0x3, prev_row4_state & 0x3, &oct_dir, &octave_nob, 14, 0, 'O');
+                    
                     prev_row4_state = read_value; // Set Previous State to Current
                 }
 
-                semaphoreGive();
+                // // West Detect
+                // if (row == 5 ){
+                //     west_east_detect[0] == (read_value >> 2) & 0x1;
+                // }
+                // // East Detect
+                // if (row == 6){
+                //     west_east_detect[1] == (read_value >> 2) & 0x1;
+                // }
             }
         }
     }

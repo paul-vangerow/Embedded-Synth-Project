@@ -4,6 +4,7 @@
 
 #include <display.h>
 #include <speaker.h>
+#include <can_class.h>
 
 void setup() {
 
@@ -17,6 +18,7 @@ void setup() {
   KeyScanner::initialise_keyScanner(); // Sets up Pin Modes
   Display::initialise_display(); // Allows power for the screen
   Speaker::initialise_speaker(); // Pin inits
+  CAN_Class::initialise_CAN(); // CAN INIT
 
   // Create RTOS Tasks
 
@@ -40,14 +42,34 @@ void setup() {
     &displayUpdateHandle /* Pointer to store the task handle */
   );
 
-  TaskHandle_t speakerUpdateHandle = NULL;
+  // TaskHandle_t speakerUpdateHandle = NULL;
+  // xTaskCreate(
+  //   Speaker::speakerUpdateTask,		/* Function that implements the task */
+  //   "speakerUpdate",		/* Text name for the task */
+  //   128,      		/* Stack size in words, not bytes */
+  //   NULL,			/* Parameter passed into the task */
+  //   4,			/* Task priority */
+  //   &speakerUpdateHandle /* Pointer to store the task handle */
+  // );
+
+  TaskHandle_t RXTaskHandle = NULL;
   xTaskCreate(
-    Speaker::speakerUpdateTask,		/* Function that implements the task */
-    "speakerUpdate",		/* Text name for the task */
+    CAN_Class::RX_Task,		/* Function that implements the task */
+    "RXTask",		/* Text name for the task */
     128,      		/* Stack size in words, not bytes */
     NULL,			/* Parameter passed into the task */
     3,			/* Task priority */
-    &speakerUpdateHandle /* Pointer to store the task handle */
+    &RXTaskHandle /* Pointer to store the task handle */
+  );
+
+  TaskHandle_t TXTaskHandle = NULL;
+  xTaskCreate(
+    CAN_Class::TX_Task,		/* Function that implements the task */
+    "TXTask",		/* Text name for the task */
+    128,      		/* Stack size in words, not bytes */
+    NULL,			/* Parameter passed into the task */
+    3,			/* Task priority */
+    &TXTaskHandle /* Pointer to store the task handle */
   );
 
   vTaskStartScheduler();
