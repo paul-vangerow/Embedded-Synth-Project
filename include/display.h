@@ -5,6 +5,7 @@
 #include <U8g2lib.h>
 #include <STM32FreeRTOS.h>
 #include <keyScanner.h>
+#include <can_class.h>
 
 class Display
 {

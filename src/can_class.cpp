@@ -5,5 +5,7 @@
 
 // ------- Member Variable Definitions ------ //
 
+    volatile uint8_t CAN_Class::TX_Message[8] = {0};
+
 // ------------ Member Functions ------------ //
 

@@ -49,6 +49,8 @@
 
             KeyScanner::semaphoreGive();
 
+            CAN_Class::TX_Message[0];
+
             u8g2.setCursor(100,10);
             u8g2.print(Vol);
             u8g2.setCursor(110,10);

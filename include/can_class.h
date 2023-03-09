@@ -11,7 +11,7 @@ class CAN_Class
 {
 public:
 
-
+    static volatile uint8_t CAN_Class::TX_Message[8];
 
 private:
 
