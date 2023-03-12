@@ -7,6 +7,8 @@
 
     U8G2_SSD1305_128X32_NONAME_F_HW_I2C Display::u8g2 = U8G2_SSD1305_128X32_NONAME_F_HW_I2C(U8G2_R0);
 
+    volatile int32_t Display::can_test = 0;
+
     const String Display::notes [] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
 
 // --------------- Functions ---------------- //
@@ -42,7 +44,8 @@
 
 
             // Print to Screen
-
+            u8g2.setCursor(10,10);
+            u8g2.print(can_test);
             u8g2.setCursor(100,10);
             u8g2.print(Vol);
             u8g2.setCursor(110,10);

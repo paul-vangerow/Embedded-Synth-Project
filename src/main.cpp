@@ -13,12 +13,13 @@ void setup() {
 
   //Initialise UART
   Serial.begin(9600);
+  delay(2000);
   Serial.println("Hello World");
 
   KeyScanner::initialise_keyScanner(); // Sets up Pin Modes
   Display::initialise_display(); // Allows power for the screen
   Speaker::initialise_speaker(); // Pin inits
-  CAN_Class::initialise_CAN(); // CAN INIT
+  CAN_Class::initialise_CAN();
 
   // Create RTOS Tasks
 
@@ -26,7 +27,7 @@ void setup() {
   xTaskCreate(
     KeyScanner::scanKeysTask,		/* Function that implements the task */
     "scanKeys",		/* Text name for the task */
-    64,      		/* Stack size in words, not bytes */
+    256,      		/* Stack size in words, not bytes */
     NULL,			/* Parameter passed into the task */
     2,			/* Task priority */
     &scanKeysHandle /* Pointer to store the task handle */
@@ -56,7 +57,7 @@ void setup() {
   xTaskCreate(
     CAN_Class::RX_Task,		/* Function that implements the task */
     "RXTask",		/* Text name for the task */
-    128,      		/* Stack size in words, not bytes */
+    256,      		/* Stack size in words, not bytes */
     NULL,			/* Parameter passed into the task */
     3,			/* Task priority */
     &RXTaskHandle /* Pointer to store the task handle */
@@ -66,7 +67,7 @@ void setup() {
   xTaskCreate(
     CAN_Class::TX_Task,		/* Function that implements the task */
     "TXTask",		/* Text name for the task */
-    128,      		/* Stack size in words, not bytes */
+    256,      		/* Stack size in words, not bytes */
     NULL,			/* Parameter passed into the task */
     3,			/* Task priority */
     &TXTaskHandle /* Pointer to store the task handle */

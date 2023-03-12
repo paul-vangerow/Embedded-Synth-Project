@@ -5,6 +5,7 @@
 #include <U8g2lib.h>
 #include <STM32FreeRTOS.h>
 #include <can_class.h>
+#include <exception>
 
 // Just Defines everything the object contains.
 
@@ -17,10 +18,16 @@ private:
     static const int OUT_PIN;
     static const int JOYXY_PIN[2];
 
-    static SemaphoreHandle_t keyArrayMutex;
+    static SemaphoreHandle_t Mux_Mutex;
+    
+    static bool EW_Detect[2];
+    static bool prev_EW_Detect[2];
+
+    static volatile bool OUT_EN;
 
     static uint8_t prev_row3_state;
     static uint8_t prev_row4_state;
+
     static uint8_t prev_pressed[3];
 
     static int32_t volume_nob;
@@ -39,6 +46,9 @@ private:
     KeyScanner(); // Private Constructor (Cannot Initialise As an Object.)
 
 public:
+    static void OUT_ENABLE();
+    static void OUT_DISABLE();
+    static bool get_OUT_EN();
 
     static void initialise_keyScanner();
     static void semaphoreTake();

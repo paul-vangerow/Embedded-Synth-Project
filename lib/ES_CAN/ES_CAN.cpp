@@ -64,11 +64,11 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* CAN_Handle) {
 
 
 uint32_t CAN_Init(bool loopback=false) {
-  if (loopback)
+  if (loopback){
     CAN_Handle.Init.Mode = CAN_MODE_LOOPBACK;
+  }
   return (uint32_t) HAL_CAN_Init(&CAN_Handle);
 }
-
 
 uint32_t setCANFilter(uint32_t filterID, uint32_t maskID, uint32_t filterBank) {
 
@@ -89,6 +89,9 @@ uint32_t setCANFilter(uint32_t filterID, uint32_t maskID, uint32_t filterBank) {
   return (uint32_t) HAL_CAN_ConfigFilter(&CAN_Handle, &filterInfo);
 }
 
+CAN_HandleTypeDef* get_can_diagnostic(){
+  return &CAN_Handle;
+}
 
 uint32_t CAN_Start() {
   return (uint32_t) HAL_CAN_Start(&CAN_Handle);

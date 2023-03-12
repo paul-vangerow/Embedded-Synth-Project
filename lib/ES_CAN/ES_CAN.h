@@ -1,12 +1,16 @@
 //Initialise the CAN module
 uint32_t CAN_Init(bool loopback=false);
 
+bool CAN_Reset();
+
 //Enable the CAN module
 uint32_t CAN_Start();
 
 //Set up a recevie filter
 //Defaults to receive everything
 uint32_t setCANFilter(uint32_t filterID=0, uint32_t maskID=0, uint32_t filterBank=0);
+
+CAN_HandleTypeDef* get_can_diagnostic();
 
 //Send a message
 uint32_t CAN_TX(uint32_t ID, uint8_t data[8]);

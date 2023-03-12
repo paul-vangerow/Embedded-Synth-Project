@@ -14,6 +14,8 @@ public:
     static void displayUpdateTask(void * pvParameter);
     static void initialise_display();
 
+    static volatile int32_t can_test;
+
 private:
 
     //Display driver object

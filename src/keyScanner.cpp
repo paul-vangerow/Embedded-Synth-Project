@@ -16,7 +16,7 @@
 // ------ Other Variables ------ //
 
     // Keys
-    uint8_t KeyScanner::prev_pressed[3];
+    uint8_t KeyScanner::prev_pressed[3] = {0xF, 0xF, 0xF};
 
     // Volume
     int32_t KeyScanner::volume_nob = 0;
@@ -29,6 +29,13 @@
      // Octave
     int32_t KeyScanner::octave_nob = 8;
     bool KeyScanner::oct_dir = false; // False = Left
+
+    // East / West Detect
+    bool KeyScanner::EW_Detect[2] = {0};
+    bool KeyScanner::prev_EW_Detect[2] = {0};
+
+    volatile bool KeyScanner::OUT_EN = false;
+    SemaphoreHandle_t KeyScanner::Mux_Mutex = xSemaphoreCreateMutex();
 
     uint8_t KeyScanner::prev_row3_state = 0; 
     uint8_t KeyScanner::prev_row4_state = 0;
@@ -45,11 +52,13 @@
 
     // Set Row Matrix 
     void KeyScanner::setRow(uint8_t rowIdx){
+        xSemaphoreTake(Mux_Mutex, portMAX_DELAY);
         digitalWrite(REN_PIN,LOW);
         digitalWrite(ROW_SEL[0], rowIdx & 0x01);
         digitalWrite(ROW_SEL[1], rowIdx & 0x02);
         digitalWrite(ROW_SEL[2], rowIdx & 0x04);
         digitalWrite(REN_PIN, HIGH);
+        xSemaphoreGive(Mux_Mutex);
     }
 
     void KeyScanner::initialise_keyScanner() {
@@ -66,18 +75,30 @@
         pinMode(COL_IN[3], INPUT);
         pinMode(JOYXY_PIN[0], INPUT);
         pinMode(JOYXY_PIN[1], INPUT);
+
+        setOutMuxBit(0x5, HIGH);
+        setOutMuxBit(0x6, HIGH);
     }
 
     //Function to set outputs using key matrix (For Initialising the Display)
     void KeyScanner::setOutMuxBit(const uint8_t bitIdx, const bool value) {
-        digitalWrite(REN_PIN,LOW);
-        digitalWrite(ROW_SEL[0], bitIdx & 0x01);
-        digitalWrite(ROW_SEL[1], bitIdx & 0x02);
-        digitalWrite(ROW_SEL[2], bitIdx & 0x04);
-        digitalWrite(OUT_PIN,value);
-        digitalWrite(REN_PIN,HIGH);
-        delayMicroseconds(2);
-        digitalWrite(REN_PIN,LOW);
+        
+        Serial.println("[DEBUG] Setting Bit: " + String(bitIdx) + " to " + String(value));
+        delay(100);
+        xSemaphoreTake(Mux_Mutex, portMAX_DELAY);
+        try {
+            digitalWrite(REN_PIN,LOW);
+            digitalWrite(ROW_SEL[0], bitIdx & 0x01);
+            digitalWrite(ROW_SEL[1], bitIdx & 0x02);
+            digitalWrite(ROW_SEL[2], bitIdx & 0x04);
+            digitalWrite(OUT_PIN,value);
+            digitalWrite(REN_PIN,HIGH);
+            delayMicroseconds(2);
+            digitalWrite(REN_PIN,LOW);
+        } catch (const std::exception& e){
+            Serial.println(e.what());
+        }
+        xSemaphoreGive(Mux_Mutex);
     }
 
     void KeyScanner::getNobChange(uint8_t curr_state, uint8_t prev_state, bool* cur_dir, int32_t* val, uint8_t max, uint8_t min, uint8_t prop){
@@ -104,27 +125,42 @@
         }
     }
 
+    void KeyScanner::OUT_ENABLE(){ // For When we have found a new leader
+        __atomic_store_n(&OUT_EN, true, __ATOMIC_RELAXED);
+    }
+
+    void KeyScanner::OUT_DISABLE(){ // For When we have not found a new leader
+        __atomic_store_n(&OUT_EN, false, __ATOMIC_RELAXED);
+    }
+
+    bool KeyScanner::get_OUT_EN(){
+        return __atomic_load_n(&OUT_EN, __ATOMIC_RELAXED);
+    }
+
     // To be run by the RTOS in a seperate Thread
     void KeyScanner::scanKeysTask(void * pvParameters) {
 
         const TickType_t xFrequency = 20/portTICK_PERIOD_MS;
         TickType_t xLastWakeTime = xTaskGetTickCount();
 
+        bool init = true;
+        delay(100);
+
         while (1) {
             vTaskDelayUntil( &xLastWakeTime, xFrequency );
+
+            bool local_out_en = get_OUT_EN(); // Prevents the value from being changed during the loop
 
             for (int row = 0; row <= 6; row++){
 
                 setRow(row);
-
-                digitalWrite(OUT_PIN, HIGH);
 
                 delayMicroseconds(3);
 
                 uint8_t read_value = readCols();
 
                 // Key Rows 
-                if (row <= 2){
+                if (row <= 2 && local_out_en){
 
                     uint8_t key_msg[8] = {'P', 'X', 'X'};
 
@@ -144,7 +180,7 @@
                 }
 
                 // Volume / Shape Nobs
-                if (row == 3){
+                if (row == 3 && local_out_en){
 
                     // Volume Nob
                     getNobChange(read_value & 0x3, prev_row3_state & 0x3, &vol_dir, &volume_nob, 16, 0, 'V');
@@ -156,7 +192,7 @@
                 }
 
                 // Octave Nob
-                if (row == 4){
+                if (row == 4 && local_out_en){
 
                     // Octave Nob
                     getNobChange(read_value & 0x3, prev_row4_state & 0x3, &oct_dir, &octave_nob, 14, 0, 'O');
@@ -164,14 +200,39 @@
                     prev_row4_state = read_value; // Set Previous State to Current
                 }
 
-                // // West Detect
-                // if (row == 5 ){
-                //     west_east_detect[0] == (read_value >> 2) & 0x1;
-                // }
-                // // East Detect
-                // if (row == 6){
-                //     west_east_detect[1] == (read_value >> 2) & 0x1;
-                // }
+                // West Detect
+                if (row == 5){
+                    EW_Detect[0] = ((read_value >> 3) == 0);
+                }
+                // East Detect
+                if (row == 6){
+                    EW_Detect[1] = ((read_value >> 3) == 0);
+                }
+            }
+            
+            // Detect Change in EW (Applies to Startup as well as assumed PREV STATE == 0)
+            if ( (((EW_Detect[0] ^ prev_EW_Detect[0]) || (EW_Detect[1] ^ prev_EW_Detect[1])) && local_out_en) || init ){
+                init = false;
+
+                Serial.print(EW_Detect[0]);
+                Serial.print(" ");
+                Serial.println(EW_Detect[1]);
+
+                // Store new state
+                prev_EW_Detect[0] = EW_Detect[0];
+                prev_EW_Detect[1] = EW_Detect[1];
+                
+                // Should have kept record of the most recent state
+                CAN_Class::reconfirm_leader(EW_Detect);
+            } else if (!local_out_en) { // All other Boards should be in this mode now too
+                if (EW_Detect[0] == 0){
+                    uint8_t curr_board = __atomic_load_n(&CAN_Class::current_board, __ATOMIC_RELAXED);
+                    if (EW_Detect[1] == 0){
+                        CAN_Class::sendFinMessage(curr_board);
+                    } else {
+                        CAN_Class::sendEastMessage(curr_board);
+                    }
+                }
             }
         }
     }
