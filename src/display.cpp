@@ -35,23 +35,27 @@
             u8g2.clearBuffer();         // clear the internal memory
             u8g2.setFont(u8g2_font_ncenB08_tr); // choose a suitable font
 
-            // Load Values 
-
             String Keys = ""; // [IMPLEMENT LATER]
-            int Vol = __atomic_load_n(&Speaker::volume, __ATOMIC_RELAXED);
-            int Shape = __atomic_load_n(&Speaker::shape, __ATOMIC_RELAXED);;
-            int Oct = __atomic_load_n(&Speaker::octave, __ATOMIC_RELAXED);;
+
+            // Only Leader Displays Parameters
+            if (__atomic_load_n(&CAN_Class::isLeader, __ATOMIC_RELAXED)){
+                // Load Values 
+                int Vol = __atomic_load_n(&Speaker::volume, __ATOMIC_RELAXED);
+                int Shape = __atomic_load_n(&Speaker::shape, __ATOMIC_RELAXED);;
+                int Oct = __atomic_load_n(&Speaker::octave, __ATOMIC_RELAXED);;
 
 
-            // Print to Screen
-            u8g2.setCursor(10,10);
-            u8g2.print(__atomic_load_n(&can_test, __ATOMIC_RELAXED));
-            u8g2.setCursor(100,10);
-            u8g2.print(Vol);
-            u8g2.setCursor(110,10);
-            u8g2.print(Oct + 1);
-            u8g2.setCursor(100,20);
-            u8g2.print(Shape);
+                // Print to Screen
+                u8g2.setCursor(10,10);
+                u8g2.print(__atomic_load_n(&can_test, __ATOMIC_RELAXED));
+                u8g2.setCursor(100,10);
+                u8g2.print(Vol);
+                u8g2.setCursor(110,10);
+                u8g2.print(Oct + 1);
+                u8g2.setCursor(100,20);
+                u8g2.print(Shape);
+            }
+            
             u8g2.setCursor(2,30);
             u8g2.print(Keys);
 

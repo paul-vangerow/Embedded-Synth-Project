@@ -7,30 +7,31 @@
 
 // ------- Member Variable Definitions ------ //
 
+    // Track Key Presses
     volatile uint32_t Speaker::stepsActive32 = 0;
     volatile uint32_t Speaker::stepsActive0 = 0;
 
+    // Playing Parameters
     volatile int32_t Speaker::volume = 6;
     volatile int32_t Speaker::shape = 0;
     volatile int32_t Speaker::octave = 4;
 
-    // Steps for 12 Notes.
+    // Steps for 96 Notes.
     int32_t Speaker::stepSizes[96] = {0};
+    uint8_t Speaker::sineTable[256];
 
-    int32_t Speaker::boardAlignment[5][2] = {{24, 36}, {12, 36}, {12, 48}, {0, 48}, {0, 60}}; 
     // Octaves allowed                         1-8       2-8        2-7      3-7      3-6
+    int32_t Speaker::boardAlignment[5][2] = {{24, 36}, {12, 36}, {12, 48}, {0, 48}, {0, 60}}; 
 
     const int Speaker::OUTL_PIN = A4;
-    const int Speaker::OUTR_PIN = A3;
-
-    uint8_t Speaker::sineTable[256];
+    const int Speaker::OUTR_PIN = A3;    
 
 // ------------ Member Functions ------------ //
 
     // Play the Sound 
     void Speaker::soundISR() {
-
         static int32_t phaseAcc[60] = {0}; // Init at 0
+
         int32_t total_vout = 0;
         uint8_t mag_div = 12;
 
@@ -40,6 +41,7 @@
 
         for (uint8_t i = boardAlignment[local_number_boards][0]; i < boardAlignment[local_number_boards][1]; i++){
 
+            // Cant use Mutexes in ISR() and 64bit values are not atomic on 32bit processes.
             if (i < 32){
                 phaseAcc[i] += (((stepsActive0 >> i) & 0x1) != 0) ? stepSizes[ ( (12*octave) - 24) + i] : -1*phaseAcc[i]; // Reset accumulators (Randomly increases amplitude otherwise)
             } else {
@@ -66,7 +68,6 @@
         }
 
         // Divide by notes to maintain note integrity
-
         total_vout = (total_vout / mag_div) >> ( 8 - volume );
         analogWrite(OUTR_PIN, total_vout);
     }
@@ -80,7 +81,6 @@
     }
 
     void Speaker::generateStepSizes(){
-
         // Generate Step Sizes for all keys (Actually will end up being more than 7.25 octaves)
 
         // 440Hz at Key 58
@@ -90,12 +90,16 @@
     }
 
     void Speaker::initialise_speaker(){
+
+        // Pins
         pinMode(OUTL_PIN, OUTPUT);
         pinMode(OUTR_PIN, OUTPUT);
 
+        // Create step sizes / tables
         generateStepSizes();
         createSineTable();
 
+        // Setup ISR
         TIM_TypeDef *Instance = TIM1;
         HardwareTimer *sampleTimer = new HardwareTimer(Instance);
 
