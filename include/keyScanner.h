@@ -38,6 +38,7 @@ private:
 
     static int32_t octave_nob;
     static bool oct_dir;
+    static uint8_t octave_permissed[5][2];
     
     static uint8_t readCols();
     static void setRow(uint8_t rowIdx);
@@ -51,6 +52,7 @@ public:
     static bool get_OUT_EN();
 
     static void initialise_keyScanner();
+    static void activate_handshakes();
     static void semaphoreTake();
     static void semaphoreGive();
     static void setOutMuxBit(const uint8_t bitIdx, const bool value);

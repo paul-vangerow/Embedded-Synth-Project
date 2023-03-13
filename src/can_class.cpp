@@ -12,11 +12,17 @@
 
     SemaphoreHandle_t CAN_Class::Board_Array_Mutex = xSemaphoreCreateMutex();
 
+    // Handshaking
     volatile uint8_t CAN_Class::board_detect_array[10] = {0}; // Array to store IDs of every board
     volatile uint8_t CAN_Class::current_board = 0; // Most recent received request number
     bool CAN_Class::inList = false; // Board has already sent its east request
-    
-    uint8_t CAN_Class::board_ID = CAN_Class::convert_8bit(HAL_GetUIDw0());
+
+    // Multi-Board Operation
+    volatile uint8_t CAN_Class::board_number = 0;
+    volatile uint8_t CAN_Class::leader_number = 0;
+    volatile uint8_t CAN_Class::number_of_boards = 0;
+
+    volatile uint8_t CAN_Class::board_ID = CAN_Class::convert_8bit(HAL_GetUIDw0());
     
     volatile bool CAN_Class::isLeader = false; // At Base Assume Leadership
 
@@ -52,10 +58,13 @@
             Serial.println("[1]");
             __atomic_store_n(&isLeader, true, __ATOMIC_RELAXED);
             delayMicroseconds(100);
+            Display::initialise_display(); // Allows power for the screen
             KeyScanner::OUT_ENABLE(); // New Leader Found, Continue operations
+            __atomic_store_n(&Display::can_test, 10, __ATOMIC_RELAXED);
         } 
         else {    
             Serial.println("[2]");
+            __atomic_store_n(&Display::can_test, 30, __ATOMIC_RELAXED);
             leadershipReset();
 
             uint8_t RX_MESSAGE[8] = {'D', 'I', 'A'};
@@ -67,11 +76,10 @@
     void CAN_Class::leadershipReset(){
         Serial.println("[3] Resetting Leadership");
 
-        delay(6000);
-
         // A module has been disconnected.
         KeyScanner::OUT_DISABLE();
         __atomic_store_n(&isLeader, false, __ATOMIC_RELAXED);
+        __atomic_store_n(&current_board, 0, __ATOMIC_RELAXED);
 
         xSemaphoreTake(Board_Array_Mutex, portMAX_DELAY);
         board_detect_array[10] = {0};
@@ -91,7 +99,7 @@
             board_detect_array[num] = board_ID; // Add Board to List
             xSemaphoreGive(Board_Array_Mutex);
 
-            uint8_t RX_MESSAGE[8] = {'E', board_ID, num};
+            uint8_t RX_MESSAGE[8] = {'E', board_ID, (num)};
             addMessageToQueue(RX_MESSAGE);
 
             delayMicroseconds(10);
@@ -130,25 +138,31 @@
         KeyScanner::setOutMuxBit(0x6, HIGH);
 
         uint8_t board_num = 0;
+
+        // Find where this board is, how many boards there are and who the leader is
         xSemaphoreTake(Board_Array_Mutex, portMAX_DELAY);
         for (int i = 0; i < 10; i++){
             if (board_detect_array[i] != 0){
                 board_num++;
+                if (board_detect_array[i] == board_ID){
+                    __atomic_store_n(&board_number, i, __ATOMIC_RELAXED);
+                }
             }
-        }
-
-        Serial.println(board_ID);
-
-        if (board_ID == board_detect_array[board_num / 2]){
-            __atomic_store_n(&isLeader, true, __ATOMIC_RELAXED);
-        } else {
-            __atomic_store_n(&isLeader, false, __ATOMIC_RELAXED);
         }
         xSemaphoreGive(Board_Array_Mutex);
 
-        Serial.println("VAL: " + String(__atomic_load_n(&isLeader, __ATOMIC_RELAXED) ));
+        __atomic_store_n(&number_of_boards, board_num, __ATOMIC_RELAXED);
+        __atomic_store_n(&leader_number, (board_num / 2), __ATOMIC_RELAXED);
+
+        if (__atomic_load_n(&leader_number, __ATOMIC_RELAXED) == __atomic_load_n(&board_number, __ATOMIC_RELAXED)){
+            __atomic_store_n(&isLeader, true, __ATOMIC_RELAXED);
+            Serial.println("Im leader!");
+        } else {
+            __atomic_store_n(&isLeader, false, __ATOMIC_RELAXED);
+        }
         
         delay(300);
+        Display::initialise_display(); // Allows power for the screen
         KeyScanner::OUT_ENABLE();
     }
 
@@ -194,6 +208,9 @@
         uint8_t RX_MESSAGE[8] = {0};
         delayMicroseconds(100);
 
+        KeyScanner::activate_handshakes(); // Now its able to Receive messages, activate handshakes.
+        Serial.println(xQueueIsQueueEmptyFromISR(msgInQ));
+
         while (1) {
             xQueueReceive(msgInQ, RX_MESSAGE, portMAX_DELAY);
 
@@ -209,14 +226,22 @@
             // Key Press Operation
             else if (local_leader){
                 if (RX_MESSAGE[0] == 'R' || RX_MESSAGE[0] == 'P'){
-                    int32_t msg_val = 0x1 << RX_MESSAGE[2];
+                    uint64_t logical_msg_val = uint64_t(0x1) << ( (RX_MESSAGE[1] * 12) + RX_MESSAGE[2] );
+
+                    uint32_t logical_msg_val_lower = uint32_t(logical_msg_val & 0xFFFFFFFF);
+                    uint32_t logical_msg_val_upper = uint32_t((logical_msg_val >> 32) & 0xFFFFFFFF);
 
                     // RX_Message will be the received Message
-                    int32_t local_steps_active = __atomic_load_n(&Speaker::stepsActive, __ATOMIC_RELAXED); //Get Note
 
-                    local_steps_active = RX_MESSAGE[0] == 'P' ? (msg_val | local_steps_active) : ~(msg_val | ~local_steps_active);
+                    uint32_t local_lower_steps = __atomic_load_n(&Speaker::stepsActive0, __ATOMIC_RELAXED);
+                    uint32_t local_upper_steps = __atomic_load_n(&Speaker::stepsActive32, __ATOMIC_RELAXED);
 
-                    __atomic_store_n(&Speaker::stepsActive, local_steps_active, __ATOMIC_RELAXED); // Store Note
+                    local_lower_steps = RX_MESSAGE[0] == 'P' ? (logical_msg_val_lower | local_lower_steps) : ~(logical_msg_val_lower | ~local_lower_steps);
+                    local_upper_steps = RX_MESSAGE[0] == 'P' ? (logical_msg_val_upper | local_upper_steps) : ~(logical_msg_val_upper | ~local_upper_steps);
+
+                    __atomic_store_n(&Speaker::stepsActive0, local_lower_steps, __ATOMIC_RELAXED);
+                    __atomic_store_n(&Speaker::stepsActive32, local_upper_steps, __ATOMIC_RELAXED);
+
                 } else if (RX_MESSAGE[0] == 'V'){
                     __atomic_store_n(&Speaker::volume, RX_MESSAGE[1], __ATOMIC_RELAXED); // Store Note
                 } else if (RX_MESSAGE[0] == 'O'){
@@ -239,7 +264,7 @@
                     board_detect_array[RX_MESSAGE[2]] = RX_MESSAGE[1]; 
                     xSemaphoreGive(Board_Array_Mutex);
 
-                    __atomic_store_n(&current_board, RX_MESSAGE[2], __ATOMIC_RELAXED);
+                    __atomic_store_n(&current_board, RX_MESSAGE[2]+1, __ATOMIC_RELAXED);
 
                 }
             }

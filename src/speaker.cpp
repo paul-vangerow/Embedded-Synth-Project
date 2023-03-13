@@ -7,7 +7,9 @@
 
 // ------- Member Variable Definitions ------ //
 
-    volatile int32_t Speaker::stepsActive = 0;
+    volatile uint32_t Speaker::stepsActive32 = 0;
+    volatile uint32_t Speaker::stepsActive0 = 0;
+
     volatile int32_t Speaker::volume = 6;
     volatile int32_t Speaker::shape = 0;
     volatile int32_t Speaker::octave = 4;
@@ -15,8 +17,8 @@
     // Steps for 12 Notes.
     int32_t Speaker::stepSizes[96] = {0};
 
-    //  = {51076057, 54113197, 57330935, 60740010, 64351799, 68178356,
-    //                                     72232452, 76527617, 81078186, 85899346, 91007187, 96418756}
+    int32_t Speaker::boardAlignment[5][2] = {{24, 36}, {12, 36}, {12, 48}, {0, 48}, {0, 60}}; 
+    // Octaves allowed                         1-8       2-8        2-7      3-7      3-6
 
     const int Speaker::OUTL_PIN = A4;
     const int Speaker::OUTR_PIN = A3;
@@ -27,13 +29,23 @@
 
     // Play the Sound 
     void Speaker::soundISR() {
-        static int32_t phaseAcc[12] = {0}; // Init at 0
+
+        static int32_t phaseAcc[60] = {0}; // Init at 0
         int32_t total_vout = 0;
         uint8_t mag_div = 12;
 
-        for (int i = 0; i < 12; i++){
-            phaseAcc[i] += (((stepsActive >> i) & 0x1) != 0) ? stepSizes[ (12*octave) + i] : -1*phaseAcc[i]; // Reset accumulators (Randomly increases amplitude otherwise)
-            
+        uint8_t local_number_boards = __atomic_load_n(&CAN_Class::number_of_boards, __ATOMIC_RELAXED);
+        uint32_t local_lower_steps = __atomic_load_n(&stepsActive0, __ATOMIC_RELAXED);
+        uint32_t local_upper_steps = __atomic_load_n(&stepsActive32, __ATOMIC_RELAXED);
+
+        for (uint8_t i = boardAlignment[local_number_boards][0]; i < boardAlignment[local_number_boards][1]; i++){
+
+            if (i < 32){
+                phaseAcc[i] += (((stepsActive0 >> i) & 0x1) != 0) ? stepSizes[ ( (12*octave) - 24) + i] : -1*phaseAcc[i]; // Reset accumulators (Randomly increases amplitude otherwise)
+            } else {
+                phaseAcc[i] += (((stepsActive32 >> (i-32) ) & 0x1) != 0) ? stepSizes[ ( (12*octave) - 24) + i] : -1*phaseAcc[i]; // Reset accumulators (Randomly increases amplitude otherwise)
+            }
+
             uint8_t point_val = (phaseAcc[i] >> 24) + 128;
 
             // Sound Wave Shape

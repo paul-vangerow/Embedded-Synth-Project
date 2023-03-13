@@ -45,7 +45,7 @@
 
             // Print to Screen
             u8g2.setCursor(10,10);
-            u8g2.print(can_test);
+            u8g2.print(__atomic_load_n(&can_test, __ATOMIC_RELAXED));
             u8g2.setCursor(100,10);
             u8g2.print(Vol);
             u8g2.setCursor(110,10);

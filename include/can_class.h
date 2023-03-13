@@ -21,6 +21,12 @@ public:
 
     static volatile bool isLeader;
     static volatile uint8_t current_board;
+    static volatile uint8_t board_detect_array[10]; // Up to 10 Boards (Excessive but meh)
+    static volatile uint8_t board_ID;
+    static volatile uint8_t board_number;
+    static volatile uint8_t leader_number;
+    static volatile uint8_t number_of_boards;
+    
     static bool inList;
 
     static void sendEastMessage(uint8_t num);
@@ -39,9 +45,7 @@ private:
     static void getNewLeader();
 
     static void leadershipReset();
-    static volatile uint8_t board_detect_array[10]; // Up to 10 Boards (Excessive but meh)
-
-    static uint8_t board_ID;
+    
 
     static QueueHandle_t msgInQ;
     static QueueHandle_t msgOutQ;

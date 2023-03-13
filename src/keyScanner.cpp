@@ -19,7 +19,7 @@
     uint8_t KeyScanner::prev_pressed[3] = {0xF, 0xF, 0xF};
 
     // Volume
-    int32_t KeyScanner::volume_nob = 0;
+    int32_t KeyScanner::volume_nob = 10;
     bool KeyScanner::vol_dir = false; // False = Left
 
     // Signal Shape
@@ -27,8 +27,9 @@
     bool KeyScanner::shape_dir = false; // False = Left
 
      // Octave
-    int32_t KeyScanner::octave_nob = 8;
+    int32_t KeyScanner::octave_nob = 6;
     bool KeyScanner::oct_dir = false; // False = Left
+    uint8_t KeyScanner::octave_permissed[5][2] = {{0, 14}, {2, 14}, {2, 12}, {4, 12}, {4, 10}};
 
     // East / West Detect
     bool KeyScanner::EW_Detect[2] = {0};
@@ -75,7 +76,9 @@
         pinMode(COL_IN[3], INPUT);
         pinMode(JOYXY_PIN[0], INPUT);
         pinMode(JOYXY_PIN[1], INPUT);
+    }
 
+    void KeyScanner::activate_handshakes(){
         setOutMuxBit(0x5, HIGH);
         setOutMuxBit(0x6, HIGH);
     }
@@ -150,11 +153,13 @@
             vTaskDelayUntil( &xLastWakeTime, xFrequency );
 
             bool local_out_en = get_OUT_EN(); // Prevents the value from being changed during the loop
+            uint8_t offset = 2;
+
+            offset = offset + (__atomic_load_n(&CAN_Class::board_number, __ATOMIC_RELAXED) - __atomic_load_n(&CAN_Class::leader_number, __ATOMIC_RELAXED));
 
             for (int row = 0; row <= 6; row++){
 
                 setRow(row);
-
                 delayMicroseconds(3);
 
                 uint8_t read_value = readCols();
@@ -162,7 +167,7 @@
                 // Key Rows 
                 if (row <= 2 && local_out_en){
 
-                    uint8_t key_msg[8] = {'P', 'X', 'X'};
+                    uint8_t key_msg[8] = {'P', offset, 'X'};
 
                     // Check for a change in presses
                     if (prev_pressed[row] ^ read_value != 0){
@@ -191,11 +196,13 @@
                     prev_row3_state = read_value; // Set Previous State to Current
                 }
 
+                uint8_t local_num_of_boards = __atomic_load_n(&CAN_Class::number_of_boards, __ATOMIC_RELAXED);
+
                 // Octave Nob
                 if (row == 4 && local_out_en){
 
                     // Octave Nob
-                    getNobChange(read_value & 0x3, prev_row4_state & 0x3, &oct_dir, &octave_nob, 14, 0, 'O');
+                    getNobChange(read_value & 0x3, prev_row4_state & 0x3, &oct_dir, &octave_nob, octave_permissed[local_num_of_boards][1], octave_permissed[local_num_of_boards][0], 'O');
                     
                     prev_row4_state = read_value; // Set Previous State to Current
                 }
@@ -228,8 +235,10 @@
                 if (EW_Detect[0] == 0){
                     uint8_t curr_board = __atomic_load_n(&CAN_Class::current_board, __ATOMIC_RELAXED);
                     if (EW_Detect[1] == 0){
+                        delay(100);
                         CAN_Class::sendFinMessage(curr_board);
                     } else {
+                        delay(100);
                         CAN_Class::sendEastMessage(curr_board);
                     }
                 }
