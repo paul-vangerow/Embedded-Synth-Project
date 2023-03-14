@@ -158,7 +158,9 @@
             uint8_t offset = 2;
 
             offset = offset + (__atomic_load_n(&CAN_Class::board_number, __ATOMIC_RELAXED) - __atomic_load_n(&CAN_Class::leader_number, __ATOMIC_RELAXED));
-
+            
+            uint16_t currentNotes = 4095; //Tracks local pressed notes
+            
             for (int row = 0; row <= 6; row++){
 
                 setRow(row);
@@ -181,6 +183,7 @@
                                 key_msg[2] = row*4 + i;
                                 CAN_Class::addMessageToQueue(key_msg);
                             }
+                            if ((read_value >> i) & 0x1) {currentNotes -= (1<<(row*4 + i));}
                         }
                         prev_pressed[row] = read_value;
                     }
@@ -218,7 +221,9 @@
                     EW_Detect[1] = ((read_value >> 3) == 0);
                 }
             }
-            
+            //Finished looping through rows, save notes
+            __atomic_store_n(&Display::localNotes, currentNotes, __ATOMIC_RELAXED);
+
             // Detect Change in EW (Applies to Startup as well as assumed PREV STATE == 0)
             if ( (((EW_Detect[0] ^ prev_EW_Detect[0]) || (EW_Detect[1] ^ prev_EW_Detect[1])) && local_out_en) || init ){
                 init = false;
