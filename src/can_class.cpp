@@ -61,7 +61,6 @@
         // Nothing Connected (Make board its own leader)
         if ( (new_east_west[0] | new_east_west[1]) == 0){
             __atomic_store_n(&isLeader, true, __ATOMIC_RELAXED); // Set Board to New Leader
-
             delayMicroseconds(100);
             Display::initialise_display(); // Reinitialise the Screen
             KeyScanner::OUT_ENABLE(); // New Leader Found, Continue operations
@@ -74,6 +73,7 @@
             uint8_t RX_MESSAGE[8] = {'D', 'I', 'A'};
             addMessageToQueue(RX_MESSAGE); 
         }
+        KeyScanner::activate_handshakes(); // [NEEDS TO GET MOVED. Currently Causing a Double Handshake]
     }
 
     // Reset Leadership and Switch KeyScanner to check for changes in Neighbours
@@ -86,41 +86,43 @@
         __atomic_store_n(&current_board, 0, __ATOMIC_RELAXED);
 
         xSemaphoreTake(Board_Array_Mutex, portMAX_DELAY);
-        board_detect_array[10] = {0};
+        for (int i = 0; i < 10; i++){
+            board_detect_array[0] = 0;
+        }
         xSemaphoreGive(Board_Array_Mutex);
 
         __atomic_store_n(&inList, false, __ATOMIC_RELAXED);
     }
 
     // If WestMost board not in the list, send a message with ID
-    void CAN_Class::sendEastMessage(uint8_t num){
+    void CAN_Class::sendEastMessage(){
         if (!__atomic_load_n(&inList, __ATOMIC_RELAXED)){ 
             __atomic_store_n(&inList, true, __ATOMIC_RELAXED); // Prevent Duplicate Boards
 
             xSemaphoreTake(Board_Array_Mutex, portMAX_DELAY);
-            board_detect_array[num] = board_ID; // Add Board to List
+            board_detect_array[__atomic_load_n(&CAN_Class::current_board, __ATOMIC_RELAXED)] = board_ID; // Add Board to List
             xSemaphoreGive(Board_Array_Mutex);
 
             // Send East Message with Board ID and which position it's in
-            uint8_t RX_MESSAGE[8] = {'E', board_ID, (num)};
+            uint8_t RX_MESSAGE[8] = {'E', board_ID, __atomic_load_n(&CAN_Class::current_board, __ATOMIC_RELAXED)};
             addMessageToQueue(RX_MESSAGE);
 
-            delayMicroseconds(10);
+            delayMicroseconds(300);
             KeyScanner::setOutMuxBit(0x6, 0); // Set East Handshake to 0 (Tell next Board that it's next)
         }
     }
 
     // Reached the EASTMOST board, send message to conclude Handshaking Process
-    void CAN_Class::sendFinMessage(uint8_t num){
+    void CAN_Class::sendFinMessage(){
         if (!__atomic_load_n(&inList, __ATOMIC_RELAXED)){
             __atomic_store_n(&inList, true, __ATOMIC_RELAXED); // Prevent Duplicate Boards
             
             xSemaphoreTake(Board_Array_Mutex, portMAX_DELAY);
-            board_detect_array[num] = board_ID; // Add Board to List
+            board_detect_array[__atomic_load_n(&CAN_Class::current_board, __ATOMIC_RELAXED)] = board_ID; // Add Board to List
             xSemaphoreGive(Board_Array_Mutex);
 
             // Send Final Message with Board ID and which position it's in
-            uint8_t RX_MESSAGE[8] = {'F', board_ID, num};
+            uint8_t RX_MESSAGE[8] = {'F', board_ID,  __atomic_load_n(&CAN_Class::current_board, __ATOMIC_RELAXED)};
             addMessageToQueue(RX_MESSAGE);
 
             delayMicroseconds(10);
@@ -131,7 +133,7 @@
     // Acquire new Leader from List.
     void CAN_Class::getNewLeader(){
 
-        Serial.println("[6]");
+        Serial.println("[DEBUG] Getting New Leader");
 
         // Reset Handshakes
         KeyScanner::setOutMuxBit(0x5, HIGH);
@@ -146,6 +148,7 @@
                 board_num++;
                 if (board_detect_array[i] == board_ID){
                     __atomic_store_n(&board_number, i, __ATOMIC_RELAXED);
+                    Serial.println("[DEBUG] Board Number: " + String(i));
                 }
             }
         }
@@ -156,13 +159,12 @@
 
         if (__atomic_load_n(&leader_number, __ATOMIC_RELAXED) == __atomic_load_n(&board_number, __ATOMIC_RELAXED)){
             __atomic_store_n(&isLeader, true, __ATOMIC_RELAXED);
-            Serial.println("Im leader!");
         } else {
             __atomic_store_n(&isLeader, false, __ATOMIC_RELAXED);
         }
-        
-        delay(300);
         Display::initialise_display(); // Reset Screen
+
+        delay(300);
         KeyScanner::OUT_ENABLE(); // Reactivate KeyScanner
     }
 
@@ -175,6 +177,7 @@
         CAN_RegisterTX_ISR(CAN_TX_ISR);
 
         setCANFilter(0x123,0x7ff);
+        Serial.println("[DEBUG] Board ID: " + String(board_ID));
         
         CAN_Start();
     }
@@ -205,8 +208,6 @@
 
         uint8_t RX_MESSAGE[8] = {0};
         delayMicroseconds(100);
-
-        KeyScanner::activate_handshakes(); // Now its able to Receive messages, activate handshakes.
 
         while (1) {
             xQueueReceive(msgInQ, RX_MESSAGE, portMAX_DELAY); // Wait Until A message has been received
@@ -249,6 +250,7 @@
             } else {
                 // Finish Message -- Tells board Handshaking is complete
                 if (RX_MESSAGE[0] == 'F'){
+
                     xSemaphoreTake(Board_Array_Mutex, portMAX_DELAY);
                     board_detect_array[RX_MESSAGE[2]] = RX_MESSAGE[1]; 
                     xSemaphoreGive(Board_Array_Mutex);
@@ -257,11 +259,12 @@
                 }
                 // East Message -- Tells board about other Boards.
                 if (RX_MESSAGE[0] == 'E'){
+                    uint8_t value = RX_MESSAGE[2] + 1;
+                    __atomic_store_n(&current_board, value, __ATOMIC_RELAXED); // Increment Next Board Index
+
                     xSemaphoreTake(Board_Array_Mutex, portMAX_DELAY);
                     board_detect_array[RX_MESSAGE[2]] = RX_MESSAGE[1]; 
                     xSemaphoreGive(Board_Array_Mutex);
-
-                    __atomic_store_n(&current_board, RX_MESSAGE[2]+1, __ATOMIC_RELAXED); // Increment Next Board Index
                 }
             }
         }

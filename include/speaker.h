@@ -29,7 +29,12 @@ private:
     static const int OUTL_PIN;
     static const int OUTR_PIN;
 
-    static uint8_t sineTable[256];
+    static DAC_HandleTypeDef hdac;
+    static DMA_HandleTypeDef hdma;
+    static int32_t sample_rate;
+    static uint32_t total_vout;
+
+    static int32_t sineTable[4096];
 
     static void createSineTable();
     static void generateStepSizes();

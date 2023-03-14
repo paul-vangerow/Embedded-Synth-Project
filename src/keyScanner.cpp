@@ -64,6 +64,8 @@
 
     void KeyScanner::initialise_keyScanner() {
 
+        Serial.println(octave_nob);
+
         // Initialise PINS
         pinMode(ROW_SEL[0], OUTPUT);
         pinMode(ROW_SEL[1], OUTPUT);
@@ -233,13 +235,10 @@
                 CAN_Class::reconfirm_leader(EW_Detect);
             } else if (!local_out_en) { // All other Boards should be in this mode now too
                 if (EW_Detect[0] == 0){
-                    uint8_t curr_board = __atomic_load_n(&CAN_Class::current_board, __ATOMIC_RELAXED);
                     if (EW_Detect[1] == 0){
-                        delay(100);
-                        CAN_Class::sendFinMessage(curr_board);
+                        CAN_Class::sendFinMessage();
                     } else {
-                        delay(100);
-                        CAN_Class::sendEastMessage(curr_board);
+                        CAN_Class::sendEastMessage();
                     }
                 }
             }

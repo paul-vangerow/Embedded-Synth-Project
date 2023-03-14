@@ -29,12 +29,13 @@ public:
     
     static bool inList;
 
-    static void sendEastMessage(uint8_t num);
-    static void sendFinMessage(uint8_t num);
+    static void sendEastMessage();
+    static void sendFinMessage();
 
     static void reconfirm_leader(bool new_east_west[2]);
 
     static SemaphoreHandle_t Board_Array_Mutex;
+    static SemaphoreHandle_t Denial;
 
 private:
     static void CAN_RX_ISR (void);
