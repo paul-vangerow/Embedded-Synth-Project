@@ -15,6 +15,10 @@
 
 // ------ Other Variables ------ //
 
+// ------- Key Matrix knob buttons location------ //
+    const int knob3ButtonRow = 5;
+    const int knob3ButtonCol = 1;
+
     // Keys
     uint8_t KeyScanner::prev_pressed[3] = {0xF, 0xF, 0xF};
 
@@ -188,6 +192,16 @@
                         prev_pressed[row] = read_value;
                     }
                 }
+                // Mute Button
+                if (row == knob3ButtonRow && local_out_en && ((prev_pressed[row] >> knob3ButtonCol) & 0x1) ^ ((read_value >> knob3ButtonCol) & 0x1) )
+                {
+                    uint8_t key_msg[8] = {'P', offset, 'X'};
+                    key_msg[0] = 'M';
+                    key_msg[2] = 0;
+                    CAN_Class::addMessageToQueue(key_msg);
+
+                }
+                
 
                 // Volume / Shape Nobs
                 if (row == 3 && local_out_en){

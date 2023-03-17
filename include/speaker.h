@@ -15,6 +15,9 @@ public:
     static void initialise_speaker();
     static void speakerUpdateTask(void * pvParameter);
 
+    static volatile uint32_t ticks;
+    static volatile uint32_t debounce;
+    
     static volatile uint32_t stepsActive32;
     static volatile uint32_t stepsActive0;
     

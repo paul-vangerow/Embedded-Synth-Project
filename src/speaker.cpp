@@ -6,6 +6,8 @@
 #include <math.h>
 
 // ------- Member Variable Definitions ------ //
+    volatile uint32_t Speaker::ticks = 0;
+    volatile uint32_t Speaker::debounce = 0;
 
     // Track Key Presses
     volatile uint32_t Speaker::stepsActive32 = 0;

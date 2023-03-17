@@ -4,6 +4,7 @@
 #include <can_class.h>
 #include <exception>
 
+
 // ------- Member Variable Definitions ------ //
 
     // Mutexes
@@ -214,6 +215,10 @@
 
             bool local_leader = __atomic_load_n(&isLeader, __ATOMIC_RELAXED); // Local Variables to prevent cluttering of Atomic accesses
 
+            uint32_t  ticks = __atomic_load_n(&Speaker::ticks, __ATOMIC_RELAXED);
+
+            __atomic_store_n(&Speaker::ticks, ticks + 1, __ATOMIC_RELAXED);
+
             // Leadership Reset Request -- Another Board detected a Change, reinitiate Handshaking
             if ((RX_MESSAGE[0] == 'D') && (RX_MESSAGE[1] == 'I') && (RX_MESSAGE[2] == 'A')){
                 if (KeyScanner::get_OUT_EN()){
@@ -223,7 +228,23 @@
             
             // Key Press Operation
             else if (local_leader){
-                if (RX_MESSAGE[0] == 'R' || RX_MESSAGE[0] == 'P'){
+                if (RX_MESSAGE[0] =='M')
+                {   
+                    if (__atomic_load_n(&Speaker::ticks, __ATOMIC_RELAXED ) - __atomic_load_n(&Speaker::debounce, __ATOMIC_RELAXED) > 8){
+
+                        __atomic_store_n(&Speaker::debounce, ticks, __ATOMIC_RELAXED);
+                    
+                        if ( __atomic_load_n(&Speaker::volume, __ATOMIC_RELAXED) == 0  )
+                        {
+                            __atomic_store_n(&Speaker::volume, 8, __ATOMIC_RELAXED);
+                        }
+                        else
+                        {
+                            __atomic_store_n(&Speaker::volume, 0, __ATOMIC_RELAXED);
+                        }
+                    }
+                } else if (RX_MESSAGE[0] == 'R' || RX_MESSAGE[0] == 'P'){
+                   
                     
                     // Seperate Upper and Lower as we are on a 32bit system
                     uint64_t logical_msg_val = uint64_t(0x1) << ( (RX_MESSAGE[1] * 12) + RX_MESSAGE[2] );
