@@ -7,6 +7,8 @@
 #include <keyScanner.h>
 #include <can_class.h>
 
+//#define TEST_DISPLAY
+
 class Display
 {
 public:

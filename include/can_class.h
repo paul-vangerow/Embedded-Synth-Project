@@ -10,6 +10,9 @@
 #include <speaker.h>
 #include <display.h>
 
+//#define TEST_CAN_RX
+//#define TEST_CAN_TX
+
 class CAN_Class
 {
 public:

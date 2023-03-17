@@ -7,13 +7,14 @@
 
 #include <keyScanner.h>
 
+//#define TEST_SPEAKER
+
 class Speaker
 {
 public:
 
     static void soundISR();
     static void initialise_speaker();
-    static void speakerUpdateTask(void * pvParameter);
 
     static volatile uint32_t stepsActive32;
     static volatile uint32_t stepsActive0;

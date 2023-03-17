@@ -149,10 +149,11 @@
         TickType_t xLastWakeTime = xTaskGetTickCount();
 
         bool init = true;
-        delay(100);
 
         while (1) {
+            #ifndef TEST_SCANKEYS
             vTaskDelayUntil( &xLastWakeTime, xFrequency );
+            #endif
 
             bool local_out_en = get_OUT_EN(); // Prevents the value from being changed during the loop
             uint8_t offset = 2;
@@ -247,5 +248,8 @@
                     }
                 }
             }
+            #ifdef TEST_SCANKEYS
+            break;
+            #endif
         }
     }

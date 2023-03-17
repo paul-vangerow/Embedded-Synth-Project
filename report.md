@@ -54,5 +54,10 @@ A critical instant analysis of the rate monotonic scheduler, showing that all de
 A quantification of total CPU utilisation
 
 An identification of all the shared data structures and the methods used to guarantee safe access and synchronisation
-
+    Display:
+        localNotes: atomic access, uint16_t storing currently pressed notes on this keyboard only
+    Speaker:
+        stepsActive0/stepsActive32: atomic access, uint32_t
+        volume/shape/octave: atomic access, int32_t
+        
 An analysis of inter-task blocking dependencies that shows any possibility of deadlock

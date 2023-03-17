@@ -3,20 +3,7 @@
 #include <STM32FreeRTOS.h>
 #include <display.h>
 
-static TIM_HandleTypeDef s_TimerInstance = { 
-    .Instance = TIM2
-};
-void InitializeTimer()
-{
-    __TIM2_CLK_ENABLE();
-    s_TimerInstance.Init.Prescaler = 800;
-    s_TimerInstance.Init.CounterMode = TIM_COUNTERMODE_UP;
-    s_TimerInstance.Init.Period = 500;
-    s_TimerInstance.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-    s_TimerInstance.Init.RepetitionCounter = 0;
-    HAL_TIM_Base_Init(&s_TimerInstance);
-    //HAL_TIM_Base_Start(&s_TimerInstance);
-}
+
 // ------ Member Variable Definitions ------ //
 
     U8G2_SSD1305_128X32_NONAME_F_HW_I2C Display::u8g2 = U8G2_SSD1305_128X32_NONAME_F_HW_I2C(U8G2_R0);
@@ -56,9 +43,10 @@ void InitializeTimer()
         TickType_t xLastWakeTime = xTaskGetTickCount();
 
         while(1) {
+            #ifndef TEST_DISPLAY
             vTaskDelayUntil( &xLastWakeTime, xFrequency );
-            InitializeTimer();
-            HAL_TIM_Base_Start(&s_TimerInstance);
+            #endif
+
             
             //Update display
             u8g2.clearBuffer();         // clear the internal memory
@@ -102,7 +90,9 @@ void InitializeTimer()
 
             //Toggle LED
             digitalToggle(LED_BUILTIN);
-            static uint32_t final = __HAL_TIM_GET_COUNTER(&s_TimerInstance);
-            Serial.println(final);
+            #ifdef TEST_DISPLAY
+                break;
+            #endif
+
         }
     }
