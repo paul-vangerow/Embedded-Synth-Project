@@ -1,8 +1,6 @@
 # Embedded Systems Synthesiser Coursework Report
 
-
-Small section talking about the task.
-
+Part 2 for our embedded systems coursework involved writing the embedded software for a music synthesiser. The project's objective is to create and put into use software that can control the synthesiser and generate various sounds and effects. As well as learning about embedded systems and Platform.io, this project also also helped us gain a string knowledge of software engineering principles.
 
 ## Features
 
