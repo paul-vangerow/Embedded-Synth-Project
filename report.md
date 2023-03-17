@@ -1,3 +1,47 @@
+# Embedded Systems Synthesiser Coursework Report
+
+
+Small section talking about the task.
+
+
+## Features
+
+A list of all features + descriptions + videos for them
+
+#### Basic Features
+
+- Sawtooth Notes
+- Volume Control
+- Display Note and Volume Display
+- Synthesiser Multi-board Operation
+
+#### Advanced Features
+
+- Different Wave Types
+- DAC Output
+- Auto board detection and dynamic octave scaling
+- Polyphony
+- Mute Button
+
+## Analysis
+
+CPU Utilisation
+
+Tasks 
+
+- How they are impelemented (ISR / Thread)
+- Maximum Exec Time per Task
+- Deadline Analysis
+
+Concurrent Programming Stuff
+
+- Data Structures + How they are kept in Synch / Thread Safe
+- Inter Task dependency + Blocking Analysis
+
+
+
+
+
 An identification of all the tasks that are performed by the system with their method of implementation, thread or interrupt:
     Key scanner "scanKeysTask": thread, to read and interpret all inputs
     Display updater "displayUpdateTask": thread, to update display with current state
