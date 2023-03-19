@@ -228,22 +228,7 @@
             
             // Key Press Operation
             else if (local_leader){
-                if (RX_MESSAGE[0] =='M')
-                {   
-                    if (__atomic_load_n(&Speaker::ticks, __ATOMIC_RELAXED ) - __atomic_load_n(&Speaker::debounce, __ATOMIC_RELAXED) > 8){
-
-                        __atomic_store_n(&Speaker::debounce, ticks, __ATOMIC_RELAXED);
-                    
-                        if ( __atomic_load_n(&Speaker::volume, __ATOMIC_RELAXED) == 0  )
-                        {
-                            __atomic_store_n(&Speaker::volume, 8, __ATOMIC_RELAXED);
-                        }
-                        else
-                        {
-                            __atomic_store_n(&Speaker::volume, 0, __ATOMIC_RELAXED);
-                        }
-                    }
-                } else if (RX_MESSAGE[0] == 'R' || RX_MESSAGE[0] == 'P'){
+                if (RX_MESSAGE[0] == 'R' || RX_MESSAGE[0] == 'P'){
                    
                     
                     // Seperate Upper and Lower as we are on a 32bit system
@@ -267,6 +252,20 @@
                     __atomic_store_n(&Speaker::octave, RX_MESSAGE[1], __ATOMIC_RELAXED); // Store Octave Value
                 } else if (RX_MESSAGE[0] == 'S'){
                     __atomic_store_n(&Speaker::shape, RX_MESSAGE[1], __ATOMIC_RELAXED); // Store Shape Value
+                } else if (RX_MESSAGE[0] =='M'){   
+                    if (__atomic_load_n(&Speaker::ticks, __ATOMIC_RELAXED ) - __atomic_load_n(&Speaker::debounce, __ATOMIC_RELAXED) > 14){
+                        __atomic_store_n(&Speaker::debounce, ticks, __ATOMIC_RELAXED);
+
+                        int32_t local_vol = __atomic_load_n(&Speaker::volume, __ATOMIC_RELAXED);
+                    
+                        if ( local_vol == 0 ) {
+                            __atomic_store_n(&Speaker::volume, Speaker::volume_store, __ATOMIC_RELAXED);
+                        }
+                        else {
+                            __atomic_store_n(&Speaker::volume, 0, __ATOMIC_RELAXED);
+                            Speaker::volume_store = local_vol;
+                        }
+                    }
                 }
             } else {
                 // Finish Message -- Tells board Handshaking is complete

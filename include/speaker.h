@@ -23,6 +23,7 @@ public:
     static volatile uint32_t stepsActive0;
     
     static volatile int32_t volume;
+    static volatile int32_t volume_store;
     static volatile int32_t shape;
     static volatile int32_t octave;
 

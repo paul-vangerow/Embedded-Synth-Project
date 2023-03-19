@@ -15,6 +15,8 @@
 
     // Playing Parameters
     volatile int32_t Speaker::volume = 6;
+    volatile int32_t Speaker::volume_store = 0;
+
     volatile int32_t Speaker::shape = 0;
     volatile int32_t Speaker::octave = 4;
 
