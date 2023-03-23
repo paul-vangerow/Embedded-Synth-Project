@@ -39,15 +39,25 @@ To improve the functionality of the Synthesiser, we added an array of more Advan
 - [Polyphony](#Polyphony)
 - [CAN Auto Detect](#CAN-Auto-Detection)
 
-# Mute Button -- REWORD
+# Mute Button
 
-A mute button is a button that allows a user to mute or silence an audio signal. In order to create a mute button in C++.
+## Description
+
+The mute button allows a user to mute or silence an audio signal, and then unmute, returning to the previous volume.
+
+## How It's Implemented
 
 When the button is pressed, the input pin will read a HIGH signal. We can then use a digital output pin to control the audio signal. When the button is pressed, the digital output pin will be set to LOW, which will silence the audio signal. When the button is released, the digital output pin will be set to HIGH, which will allow the audio signal to play.
 
 Debouncing is the process of filtering out false signals that can occur when a button is pressed or released. When a button is pressed or released, it can cause a rapid fluctuation in the input signal, which can be interpreted as multiple button presses or releases. Debouncing helps to filter out these false signals, ensuring that the button press or release is registered accurately.
 
-I used a software debounce algorithm. This involves using a timer to delay the processing of the input signal for a short period of time, typically a few milliseconds. This allows any false signals to settle down, ensuring that only a single button press or release is registered.
+We used a software debounce algorithm. This involves using a timer to delay the processing of the input signal for a short period of time, typically a few milliseconds. This allows any false signals to settle down, ensuring that only a single button press or release is registered.
+
+## Demonstration Video
+
+<video width="320" height="240" controls>
+  <source src="./vid/mute.mp4" type="video/mp4">
+</video>
 
 # Different Output Waveforms
 
@@ -67,7 +77,9 @@ The speaker ISR was modified to use the shape in a Switch-Case statement to dete
 
 ## Demonstration Video
 
-INSERT VIDEO LINK
+<video width="320" height="240" controls>
+  <source src="./vid/waveforms.mp4" type="video/mp4">
+</video>
 
 # Polyphony
 
@@ -85,7 +97,9 @@ During the loop which adds to the accumulators, the accumulators are also used t
 
 ## Demonstration Video
 
-INSERT VIDEO LINK
+<video width="320" height="240" controls>
+  <source src="./vid/polyphony.mp4" type="video/mp4">
+</video>
 
 # CAN Auto Detection
 
@@ -119,7 +133,9 @@ Every cycle of the KeyScanner task, all of the implemented input parameters are 
 
 ## Demonstration Video
 
-INSERT VIDEO LINK
+<video width="320" height="240" controls>
+  <source src="./vid/autoCAN.mp4" type="video/mp4">
+</video>
 
 # Analysis
 
