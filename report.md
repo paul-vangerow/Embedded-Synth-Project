@@ -138,8 +138,41 @@ For the implementation of our Synthesiser we used multiple concurrent tasks with
 | CAN_RX_ISR     | Interrupt | Enqueue recieved CAN messages into the IN Queue                          | N/A  | N/A  |
 
 ## Critical Instant Analysis
+| Task                          | Max Execution Time (C) /us    | Initiation Interval/Deadline (T) /ms | Ratio C/T  |
+| ----------------------------- | ------------------------------| -------------------------------------| -----------|
+| Display                       | 5284.125                      | 100                                  | 0.05284125 | 
+| KeyScanning with Handshake    | 132.875                       | 20                                   | 0.00664375 |
+| CAN_RX                        | 884.25                        | 10                                   | 0.088425   | 
+| CAN_TX                        | 884.15625                     | 2                                    | 0.442078125| 
+
+U = Sum of Ratios = 0.589988125
+U <= Utilisation Limit = n(2^(1/n) -1) =  0.75682846
+where n (= 4) is the number of tasks 
+
+The processes meet their deadlines and can be scheduled using rate monotonic scheduling.
 
 ## CPU Utilisation
+Measured with RTOS vTaskGetRunTimeStats() with micros() precision
+
+USAGE WHILE IDLE
+statsTask       1955428         2%
+IDLE            52443250        74%
+displayUpdate   12762808        18%
+scanKeys        2828623         4%
+RXTask          8067            <1%
+Tmr Svc         15              <1%
+TXTask          109             <1%
+
+WHILE ALL KEYS PRESSED REPEATEDLY AND KNOBS TURNED
+statsTask       427536          2%
+IDLE            13481899        67%
+displayUpdate   4141945         20%
+scanKeys        1942962         9%
+RXTask          10425           <1%
+Tmr Svc         15              <1%
+TXTask          109             <1%
+
+Much more time is spent IDLE than on any task. This shows that our CPU usage is well within reasonable limits.
 
 ## Shared Dependencies
 

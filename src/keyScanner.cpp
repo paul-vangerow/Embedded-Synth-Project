@@ -253,7 +253,7 @@
                 prev_EW_Detect[1] = EW_Detect[1];
                 
                 // Should have kept record of the most recent state
-                #if defined(TEST_SCANKEYS_INIT)
+                #ifndef TEST_SCANKEYS_INIT
                 CAN_Class::reconfirm_leader(EW_Detect);
                 #endif
 

@@ -227,12 +227,16 @@
     void CAN_Class::RX_Task(void * pvParameters){
 
         uint8_t RX_MESSAGE[8] = {0};
-
-        //delayMicroseconds(100);
+        #ifndef TEST_CAN_RX
+        const TickType_t xFrequency = 2/portTICK_PERIOD_MS;
+        TickType_t xLastWakeTime = xTaskGetTickCount();
+        #endif
 
         while (1) {
             #ifndef TEST_CAN_RX
+            vTaskDelayUntil( &xLastWakeTime, xFrequency );
             xQueueReceive(msgInQ, RX_MESSAGE, portMAX_DELAY); // Wait Until A message has been received
+            
             #else
             xQueueReceive(msgInQ, RX_MESSAGE, 0);
             #endif
