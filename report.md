@@ -127,26 +127,26 @@ INSERT VIDEO LINK
 
 For the implementation of our Synthesiser we used multiple concurrent tasks with the following properties:
 
-| Task Name      | Task Type | Purpose                                 | Theoretical Minimum Initiation | Maximum Execution |
+| Task Name      | Task Type | Purpose                                 | Theoretical Minimum Initiation /μs | Maximum Execution /μs |
 | ---            | ---       | ---                                                                      | ---  | ---  |
-| Key Scanner    | Thread    | Reading key presses and transmitting them as CAN Messages.               |      |      |
-| Display Update | Thread    | Taking in information from other tasks and displaying it.                |      |      |
-| CAN TX         | Thread    | Sending out items from the CAN Out Queue                                 |      |      |
-| CAN RX         | Thread    | Interpreting and processing items from the CAN In Queue                  |      |      |
-| Speaker        | Interrupt | Sending voltage values to the DAC based on the desired sound to be played|      |      |
+| Key Scanner    | Thread    | Reading key presses and transmitting them as CAN Messages.               | 100 | 132.88 |
+| Display Update | Thread    | Taking in information from other tasks and displaying it.                | 20 | 5284.13 |
+| CAN TX         | Thread    | Sending out items from the CAN Out Queue                                 | 10 | 884.16 |
+| CAN RX         | Thread    | Interpreting and processing items from the CAN In Queue                  | 2 | 884.25 |
+| Speaker        | Interrupt | Sending voltage values to the DAC based on the desired sound to be played| 45.5 | 8.43 |
 | CAN_TX_ISR     | Interrupt | Free mutexes when CAN outboxes are available                             | N/A  | N/A  |
 | CAN_RX_ISR     | Interrupt | Enqueue recieved CAN messages into the IN Queue                          | N/A  | N/A  |
 
 ## Critical Instant Analysis
-| Task                          | Max Execution Time (C) /us    | Initiation Interval/Deadline (T) /ms | Ratio C/T  |
+| Task                          | Max Execution Time (C) /μs    | Initiation Interval/Deadline (T) /ms | Ratio C/T  |
 | ----------------------------- | ------------------------------| -------------------------------------| -----------|
 | Display                       | 5284.125                      | 100                                  | 0.05284125 | 
-| KeyScanning with Handshake    | 132.875                       | 20                                   | 0.00664375 |
+| KeyScanning                   | 132.875                       | 20                                   | 0.00664375 |
 | CAN_RX                        | 884.25                        | 10                                   | 0.088425   | 
 | CAN_TX                        | 884.15625                     | 2                                    | 0.442078125| 
 
 U = Sum of Ratios = 0.589988125
-U <= Utilisation Limit = n(2^(1/n) -1) =  0.75682846
+U <= Utilisation Limit = $n(2^{ \frac{1}{n}} - 1)$ =  0.75682846
 where n (= 4) is the number of tasks 
 
 The processes meet their deadlines and can be scheduled using rate monotonic scheduling.
@@ -203,75 +203,8 @@ When working with this many concurrent tasks, the potential issue of race condit
 
 ### Inter Task Blocking
 
+In our system, there is no real instance of inter task blocking. Every task runs concurrently and does not necessarily rely 
+on anything specific from other tasks since most memory accesses are 
+
 - Inter task blocking
 - How things are kept Thread safe 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Tasks
-
-Display
-- What kind of Method (ISR / Thread)
-- What it does
-- Why this method of implementation
-- Maximum Execution Time (Deadline Analysis)
-- Minimum theoretical initiation interval
-- Does it meet the deadline?
-
-| Task | Thread | Interrupt | Min initiation interval (theoretical) | Max execution time (microseconds) for 1 iteration|
-| ----------------------------- | -------------- | ------------- | ----------------- | -- |
-|Speaker  |&check;|  |  | 8.125 | 
-|Display  | |  |  | 5301 |
-| KeyScanning with Handshake |  | &check; |  | 321810 |
-| KeyScanning without Handshake | &cross; |  |  | 131.9 |
-| CAN_RX| &cross; |  |  | 54112 |
-| CAN_TX| &cross; |  |  | 884.25 |
-
-- How they are impelemented (ISR / Thread)
-- Maximum Exec Time per Task
-- Deadline Analysis
-
-Concurrent Programming Stuff
-
-- Data Structures + How they are kept in Synch / Thread Safe
-- Inter Task dependency + Blocking Analysis
-
-An identification of all the tasks that are performed by the system with their method of implementation, thread or interrupt:
-Key scanner "scanKeysTask": thread, to read and interpret all inputs
-Display updater "displayUpdateTask": thread, to update display with current state
-Speaker "soundISR": interrupt, to play current pressed notes with configured settings
-CAN TxRx: task & interrupt, to monitor and update TxRx queues
-
-A characterisation of each task with its theoretical minimum initiation interval and measured maximum execution time
-The minimum initiation interval, in this case, might be the total number of clock cycles required/time taken
-
-A critical instant analysis of the rate monotonic scheduler, showing that all deadlines are met under worst-case conditions
-
-Critical instant - occurs whenever the task is requested simultaneously with requests for all higher priority tasks
-
-Monotonic rate scheduling - If the process has a small job duration, then it has the highest priority. Thus if a process with highest priority starts execution, it will preempt the other running processes. The priority of a process is inversely proportional to the period it will run for.
-
-A quantification of total CPU utilisation
-
-An identification of all the shared data structures and the methods used to guarantee safe access and synchronisation
-Display:
-localNotes: atomic access, uint16_t storing currently pressed notes on this keyboard only
-Speaker:
-stepsActive0/stepsActive32: atomic access, uint32_t
-volume/shape/octave: atomic access, int32_t
-
-An analysis of inter-task blocking dependencies that shows any possibility of deadlock
