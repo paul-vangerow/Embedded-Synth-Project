@@ -8,7 +8,21 @@
 #include <can_class.h>
 
 //#define DISABLE_THREADS
+unsigned long statsCounter;
 
+void statsTask(void *pvParameters){
+  const TickType_t xFrequency = 1000/portTICK_PERIOD_MS;
+  TickType_t xLastWakeTime = xTaskGetTickCount();
+  while(1)
+  {
+    vTaskDelayUntil( &xLastWakeTime, xFrequency );
+    char stats[40*5];
+    vTaskGetRunTimeStats(stats);
+    //Serial.println("stats: ");
+    Serial.println(stats);
+  }
+
+}
 
 void setup() {
   //Set pin directions
@@ -28,6 +42,15 @@ void setup() {
   Speaker::initialise_speaker(); // Pin inits
   CAN_Class::initialise_CAN(false);
 
+  TaskHandle_t StatsHandle = NULL;
+  xTaskCreate(
+    statsTask,		/* Function that implements the task */
+    "statsTask",		/* Text name for the task */
+    1024,      		/* Stack size in words, not bytes */
+    NULL,			/* Parameter passed into the task */
+    1,			/* Task priority */
+    &StatsHandle /* Pointer to store the task handle */
+  );
   TaskHandle_t RXTaskHandle = NULL;
   xTaskCreate(
     CAN_Class::RX_Task,		/* Function that implements the task */
@@ -102,8 +125,10 @@ void setup() {
   
   Display::initialise_display();
 	uint32_t startTime = micros();
+
 	for (int iter = 0; iter < 32; iter++) {
 		Display::displayUpdateTask(nullptr);
+
 	}
 	Serial.println(micros()-startTime);
 	while(1);
