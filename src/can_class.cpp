@@ -237,7 +237,7 @@
             xQueueReceive(msgInQ, RX_MESSAGE, 0);
             #endif
           
-            Serial.println("received rx can message");
+            //Serial.println("received rx can message");
             bool local_leader = __atomic_load_n(&isLeader, __ATOMIC_RELAXED); // Local Variables to prevent cluttering of Atomic accesses
 
             uint32_t  ticks = __atomic_load_n(&Speaker::ticks, __ATOMIC_RELAXED);
@@ -312,9 +312,9 @@
                     xSemaphoreGive(Board_Array_Mutex);
                 }
             }
-            Serial.println("end of rx task");
+            //Serial.println("end of rx task");
             #ifdef TEST_CAN_RX
-            Serial.println("breaking");
+            //Serial.println("breaking");
             break;
             #endif
         }

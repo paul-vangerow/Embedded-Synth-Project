@@ -39,9 +39,10 @@
     // Display Update Task (To be Invoked by RTOS)
 
     void Display::displayUpdateTask(void * pvParameter) {
+        #ifndef TEST_DISPLAY
         const TickType_t xFrequency = 100/portTICK_PERIOD_MS;
         TickType_t xLastWakeTime = xTaskGetTickCount();
-
+        #endif
         while(1) {
             #ifndef TEST_DISPLAY
             vTaskDelayUntil( &xLastWakeTime, xFrequency );
