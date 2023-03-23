@@ -200,7 +200,7 @@ void setup() {
 	uint32_t startTime = micros();
 	for (int iter = 0; iter < 32; iter++) {
     CAN_TX(0x123, key_msg);
-		//CAN_Class::RX_
+		CAN_Class::RX_ISR();
 	}
 	Serial.println(micros()-startTime);
 	while(1);
