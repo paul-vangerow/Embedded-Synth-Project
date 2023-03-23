@@ -1,31 +1,163 @@
 # Embedded Systems Synthesiser Coursework Report
 
-- Small Introduction
+Part 2 for our embedded systems coursework involved writing the embedded software for a music synthesiser. The project's objective is to create and put into use software that can control the synthesiser and generate various sounds and effects. As well as learning about embedded systems and Platform.io, this project also also helped us gain a strong knowledge of software engineering principles.
 
-Part 2 for our embedded systems coursework involved writing the embedded software for a music synthesiser. The project's objective is to create and put into use software that can control the synthesiser and generate various sounds and effects. As well as learning about embedded systems and Platform.io, this project also also helped us gain a string knowledge of software engineering principles.
+# Synthesiser Features
 
-## Features
+## Basic Features
 
-A list of all features + descriptions. Here is a link to a video which demonstrates all of our implemented features.
+All the core features for the synthesiser were implemented. Including:
 
-#### Basic Features
-
-- Sawtooth Notes
+- Basic Sawtooth Notes
+  - Can be played to create sound
+- Multi Board CAN communication
+  - Can be used to chain multiple boards together and increase the size of the Synthesiser
 - Volume Control
-- Display Note and Volume Display
-- Synthesiser Multi-board Operation
+  - Divides up the value of the output to reduce or increase volume.
+- Display
+  - Shows current note being played as well as values for several control settings.
 
-#### Advanced Features
 
-- Different Wave Types
-- DAC Output
-- Auto board detection and dynamic octave scaling
-- Polyphony
-- Mute Button
+### Board Control Scheme
+
+The basic control scheme for the synthesiser.
+
+| Name | Property | Control Nob Location | Control Type | Display Location |
+| --- | --- | --- | --- | --- |
+| Volume Nob | Volume | ○ ○ ○ ● | Rotary Dial | Top Left |
+| Octave Nob | Octave | ○ ● ○ ○ | Rotary Dial | Top Right | 
+| Shape Nob | Waveform | ○ ○ ● ○ | Rotary Dial | Bottom Left |
+| Mute Button | Volume | ○ ○ ○ ● | Button | Top Left |
+
+
+## Advanced Features
+
+To improve the functionality of the Synthesiser, we added an array of more Advanced features including:
+
+- [Mute Button](#Mute-Button)
+- [Different Output Waveforms](#Different-Output-Waveforms)
+- [Polyphony](#Polyphony)
+- [CAN Auto Detect](#CAN-Auto-Detection)
+
+# Mute Button -- REWORD
+
+A mute button is a button that allows a user to mute or silence an audio signal. In order to create a mute button in C++.
+
+When the button is pressed, the input pin will read a HIGH signal. We can then use a digital output pin to control the audio signal. When the button is pressed, the digital output pin will be set to LOW, which will silence the audio signal. When the button is released, the digital output pin will be set to HIGH, which will allow the audio signal to play.
+
+Debouncing is the process of filtering out false signals that can occur when a button is pressed or released. When a button is pressed or released, it can cause a rapid fluctuation in the input signal, which can be interpreted as multiple button presses or releases. Debouncing helps to filter out these false signals, ensuring that the button press or release is registered accurately.
+
+I used a software debounce algorithm. This involves using a timer to delay the processing of the input signal for a short period of time, typically a few milliseconds. This allows any false signals to settle down, ensuring that only a single button press or release is registered.
+
+# Different Output Waveforms
+
+## Description
+
+Another feature implemented is the ability to switch between a number of output waveforms. These can be cycled through using the rotary nob second from the right, with the selected value displayed as the bottom left number on the screen. Available waveforms are as follows:
+
+- Sawtooth (Option 0)
+- Sine Wave (Option 1)
+- Square Wave (Option 2)
+
+## How It's Implemented
+
+The Volume Nob change detection was standardised into a generic function that can apply to any of the nobs, and change their values to any specified value range. This was then used to control a 'Shape' variable stored in the Speaker class by modifying the value through an Atomic Load and Store whenever the nob's state was changed.
+   
+The speaker ISR was modified to use the shape in a Switch-Case statement to determine how the phase accumulator values would be used. For the basic sawtooth, the value would be used as is, giving us the standard behaviour expected. The other wave forms transformed the sawtooth through basic mathematical operations / lookup tables to achieve the expected function.
+
+## Demonstration Video
+
+INSERT VIDEO LINK
+
+# Polyphony
+
+## Description
+
+Polyphony is the ability to play multiple notes at once, enabling the ability to play chords and more complicated harmonies. Polyphony is always enabled and works with all connected keys, with up to 5 keyboards.
+
+## How It's Implemented
+
+The speaker function was modified to include multiple phase accumulators, one for every key that was to be pressed. Originally this was only 12 accumulators, but after the introduction of CAN this was changed to 60 - enabling the use of 5 boards simultaneously.
+
+Each key was made to write a single bit high or low in a 64 bit integer, based on its positioning relative to the 'Leader' keyboard. This integer is then read in the speaker class, adding the appropriate step size to the corresponding phase accumulator when the bit is high.
+
+During the loop which adds to the accumulators, the accumulators are also used to sum together a 'total voltage' which will represent the combinations of all the keys pressed and will be output to the DAC after being appropriately shifted to 12 bits.
+
+## Demonstration Video
+
+INSERT VIDEO LINK
+
+# CAN Auto Detection
+
+The final, main advanced feature added was the ability for boards to automatically be deteced and for board octaves to be dynamically scaled based on their location in relation to the main board - the designated leader. It allows one to stick boards together, have them be automatically detected and send their key press values to the leader board which will play them.
+
+## How It's Implemented
+
+### General Function
+
+CAN auto detection was implemented by first rearranging the code a bit. The largest change made was in the way key presses were handled. Originally we had a seperate Speaker task which would read values from the KeyScanner using a semaphore. All of this was scrapped in favor of a purely CAN based system.
+
+When the user presses a key, releases one or turns any of the implemented dials, a CAN message is broadcast to the the network with information regarding the nature of the keypress. The board that is the designated leader receives these in its Receive Queue and processes them as individual key inputs. Other boards can also receive these messages but will simply discard them as a leadership status is required for them to be processes. To allow the leader to read it's own key presses - it doesn't transmit them into the CAN network, but instead just adds them to its own receive queue.
+
+Each board contains information on its location relative to the leader board (to be discussed later) and uses this information to encode a octave differential into its key messages. This means that when the leader receives the inputs - it knows how to scale them and activate the correct note without having to do much additional processing (something which would massively slow down the receiver task).
+
+### Handshaking and Auto Detection
+
+Every cycle of the KeyScanner task, all of the implemented input parameters are measured, including those of the East and West detect. When the board detects a change in either it's east or west connections - it changes its leadership status to false, clears its record of other boards, disables the key press messages and evaluates it's new state and what to do about it. If the change results in it no longer being connected to any boards, then it will set itself to its own leader and reinitialise key reading and display operation. If the change results in a different configuration than it was connected to before, it initiates the following handshaking procedure:
+
+1. Broadcast a Leadership reset signal, this will make all the other connected boards also reset their leadership statuses as well as activating their own handshaking procedures.
+
+2. Once every board is ready, handshaking begins:
+   
+3. If the board is most Westerly (It has no West connection, only east), then the board will transmit an East message on it's CAN bus. This message contains information on the current board ID as well as it's position in the order of boards. Every board that picks up this message adds the board ID to their boards array at the specified index and increments their own board counter to be the received value + 1.
+
+4. After sending out it's east message, the board deactivates it's east facing handshake signals - making the next board over a 'most westerly' board.
+
+5. The process propagates and repeats until the very end is reached, where a 'most easterly' board exists that is not connected to either a west or east board. This board repeats the east message but as a 'Fin' message - indicating to other boards that the handshaking procedure is finished.
+
+6. When the message is sent out / received, every board reactivates their east / west handshake signals and begin their leader selection algorithm, where they check the middle value of the boards array and compare it to their own ID. If the ID's match, the board sets itself to be the leader. If they do not, then it does nothing. After a new leader has been found, the boards reset their screens and KeyScanner enables, allowing for operation to continue. 
+
+## Demonstration Video
+
+INSERT VIDEO LINK
 
 ## Analysis
 
+## Tasks Overview
+
+Each Task and ISR:
+- What it is 
+- What kind of method
+- Minimum Initiation (In a table)
+- Maximum Execution Time (In a Table)
+
+## Critical Instant Analysis
+
+## CPU Utilisation
+
+## Shared Dependencies
+
+- Inter task blocking
+- How things are kept Thread safe 
+
 CPU Utilisation
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Tasks
 
@@ -80,59 +212,3 @@ stepsActive0/stepsActive32: atomic access, uint32_t
 volume/shape/octave: atomic access, int32_t
 
 An analysis of inter-task blocking dependencies that shows any possibility of deadlock
-
-# Synthesiser Features
-
-## Basic Features
-
-## Advanced Features
-
-To improve the functionality of the Synthesiser, we added an array of more Advanced features including:
-
-- [Mute Button](#Mute-Button)
-- [Different Output Waveforms](#Different-Output-Waveforms)
-- [Polyphony](#Polyphony)
-- [CAN Auto Detect](#CAN-Auto-Detection)
-
-## Mute Button -- REWORD
-
-A mute button is a button that allows a user to mute or silence an audio signal. In order to create a mute button in C++.
-
-When the button is pressed, the input pin will read a HIGH signal. We can then use a digital output pin to control the audio signal. When the button is pressed, the digital output pin will be set to LOW, which will silence the audio signal. When the button is released, the digital output pin will be set to HIGH, which will allow the audio signal to play.
-
-Debouncing is the process of filtering out false signals that can occur when a button is pressed or released. When a button is pressed or released, it can cause a rapid fluctuation in the input signal, which can be interpreted as multiple button presses or releases. Debouncing helps to filter out these false signals, ensuring that the button press or release is registered accurately.
-
-I used a software debounce algorithm. This involves using a timer to delay the processing of the input signal for a short period of time, typically a few milliseconds. This allows any false signals to settle down, ensuring that only a single button press or release is registered.
-
-## Different Output Waveforms
-
-### Description
-
-Another feature implemented is the ability to switch between a number of output waveforms. These can be cycled through using the rotary nob second from the right, with the selected value displayed as the bottom left number on the screen. Available waveforms are as follows:
-
-- Sawtooth (Option 0)
-- Sine Wave (Option 1)
-- Square Wave (Option 2)
-
-### How It's Implemented
-
-This feature was implemented in a number of steps:
-
-1. The Volume Nob change detection was standardised into a generic function that can apply to any of the nobs, and change their values to any specified value range. This was then used to control a 'Shape' variable stored in the Speaker class by modifying the value through an Atomic Load and Store whenever the nob's state was changed.
-   
-2. The speaker ISR was modified to use the shape in a Switch-Case statement to determine how the phase accumulator values would be used. For the basic sawtooth, the value would be used as is, giving us the standard behaviour expected. 
-
-
-## Polyphony
-
-Feature:
-- Description
-- What it does
-- How it's implemented
-- Image/Video of feature
-
-
-## Different Output Waveforms
-
-## CAN Auto Detection
-
