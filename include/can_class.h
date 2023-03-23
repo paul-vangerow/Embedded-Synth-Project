@@ -16,7 +16,7 @@
 class CAN_Class
 {
 public:
-    static void initialise_CAN();
+    static void initialise_CAN(bool loopback);
     static void RX_Task(void * pvParameters);
     static void TX_Task(void * pvParameters);
 

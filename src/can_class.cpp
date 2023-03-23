@@ -45,6 +45,7 @@
 
     // ISR for Receiving, Triggers everytime there is something in the CAN Inbox.
     void CAN_Class::CAN_RX_ISR (void) {
+        Serial.println("receiving in rx isr");
         uint8_t RX_Message_ISR[8];
         uint32_t ID = 0x123;
         CAN_RX(ID, RX_Message_ISR);
@@ -62,7 +63,7 @@
         // Nothing Connected (Make board its own leader)
         if ( (new_east_west[0] | new_east_west[1]) == 0){
             __atomic_store_n(&isLeader, true, __ATOMIC_RELAXED); // Set Board to New Leader
-            delayMicroseconds(100);
+            //delayMicroseconds(100);
             Display::initialise_display(); // Reinitialise the Screen
             KeyScanner::OUT_ENABLE(); // New Leader Found, Continue operations
         } 
@@ -170,9 +171,12 @@
     }
 
     // Initialisation Function for the CAN
-    void CAN_Class::initialise_CAN(){
+    void CAN_Class::initialise_CAN(bool loopback){
 
-        CAN_Init(false);
+
+        CAN_Init(loopback);
+        //delay(1);
+
 
         CAN_RegisterRX_ISR(CAN_RX_ISR);
         CAN_RegisterTX_ISR(CAN_TX_ISR);
@@ -181,6 +185,7 @@
         Serial.println("[DEBUG] Board ID: " + String(board_ID));
         
         CAN_Start();
+        //Serial.println(CAN_Start());
     }
 
     // Used to add Messages to the TX Queue. Add to Own Receive Queue if Leader (Play your own Notes.)
@@ -197,10 +202,24 @@
         while (1) {
             uint8_t msgOut[8];
             while (1) {
+                #ifndef TEST_CAN_TX
                 xQueueReceive(msgOutQ, msgOut, portMAX_DELAY);
                 xSemaphoreTake(TX_Mutex, portMAX_DELAY);
+                #else
+                xQueueReceive(msgOutQ, msgOut, 0);
+                //xSemaphoreTake(TX_Mutex, 10000);
+                #endif
+
+                
                 CAN_TX(0x123, msgOut);
+
+                #ifdef TEST_CAN_TX
+                break;
+                #endif 
             }
+            #ifdef TEST_CAN_TX
+            break;
+            #endif 
         }
     }
 
@@ -208,11 +227,17 @@
     void CAN_Class::RX_Task(void * pvParameters){
 
         uint8_t RX_MESSAGE[8] = {0};
-        delayMicroseconds(100);
+
+        //delayMicroseconds(100);
 
         while (1) {
+            #ifndef TEST_CAN_RX
             xQueueReceive(msgInQ, RX_MESSAGE, portMAX_DELAY); // Wait Until A message has been received
-
+            #else
+            xQueueReceive(msgInQ, RX_MESSAGE, 0);
+            #endif
+          
+            Serial.println("received rx can message");
             bool local_leader = __atomic_load_n(&isLeader, __ATOMIC_RELAXED); // Local Variables to prevent cluttering of Atomic accesses
 
             uint32_t  ticks = __atomic_load_n(&Speaker::ticks, __ATOMIC_RELAXED);
@@ -287,5 +312,10 @@
                     xSemaphoreGive(Board_Array_Mutex);
                 }
             }
+            Serial.println("end of rx task");
+            #ifdef TEST_CAN_RX
+            Serial.println("breaking");
+            break;
+            #endif
         }
     }

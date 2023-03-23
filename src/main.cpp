@@ -26,7 +26,7 @@ void setup() {
 
   KeyScanner::initialise_keyScanner(); // Sets up Pin Modes
   Speaker::initialise_speaker(); // Pin inits
-  CAN_Class::initialise_CAN();
+  CAN_Class::initialise_CAN(false);
 
   TaskHandle_t RXTaskHandle = NULL;
   xTaskCreate(
@@ -72,6 +72,19 @@ void setup() {
   #endif
 
   //Timing Analysis Tests
+  #ifdef TEST_SCANKEYS_INIT
+  Serial.println("testing scan init");
+  KeyScanner::initialise_keyScanner(); // Sets up Pin Modes
+	uint32_t startTime = micros();
+	for (int iter = 0; iter < 32; iter++) {
+    Serial.println("in test loop");
+		KeyScanner::scanKeysTask(nullptr);
+	}
+	Serial.println(micros()-startTime);
+	while(1);
+  #endif
+
+  //Timing Analysis Tests
   #ifdef TEST_SCANKEYS
   KeyScanner::initialise_keyScanner(); // Sets up Pin Modes
 	uint32_t startTime = micros();
@@ -81,6 +94,7 @@ void setup() {
 	Serial.println(micros()-startTime);
 	while(1);
   #endif
+
 
   #ifdef TEST_DISPLAY
   Serial.println("testing display");
@@ -110,15 +124,15 @@ void setup() {
 
   #ifdef TEST_CAN_RX
   Serial.println("testing can rx");
-  //not sure how to preload data to the RX queue, it does it inside ISR only?
-  for (uint16_t i = 0; i < 32; i++)
-  {
-    //need message format to preload messages
-    
-  }
-  CAN_Class::initialise_CAN();
+  CAN_Class::initialise_CAN(true);
+  
+  uint8_t key_msg[8] = {'P'};
+  key_msg[0] = 'P';
+  key_msg[2] = 2*4+3;
+
 	uint32_t startTime = micros();
 	for (int iter = 0; iter < 32; iter++) {
+    CAN_TX(0x123, key_msg);
 		CAN_Class::RX_Task(nullptr);
 	}
 	Serial.println(micros()-startTime);
@@ -126,12 +140,18 @@ void setup() {
   #endif
 
   #ifdef TEST_CAN_TX
-  for (uint16_t i = 0; i < 32; i++)
+  Serial.println("testing can tx");
+  CAN_Class::initialise_CAN(true);
+  uint8_t key_msg[8] = {'P'};
+  key_msg[0] = 'P';
+  key_msg[2] = 2*4+3;
+
+  for (uint16_t i = 0; i < 36; i++)
   {
     //need message format to preload messages
-    CAN_Class::addMessageToQueue();
+    CAN_Class::addMessageToQueue(key_msg);
   }
-  CAN_Class::initialise_CAN();
+  
 	uint32_t startTime = micros();
 	for (int iter = 0; iter < 32; iter++) {
 		CAN_Class::TX_Task(nullptr);
