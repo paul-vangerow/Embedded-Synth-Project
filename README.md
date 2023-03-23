@@ -55,7 +55,7 @@ We used a software debounce algorithm. This involves using a timer to delay the 
 
 ## Demonstration Video
 
-https://github.com/paul-vangerow/synth_cw_2/blob/48b8a1f40e46c5ce7efde75507d4bc5991d8db86/vid/mute.mp4
+https://user-images.githubusercontent.com/59746049/227383712-b8c6c74f-915b-4a59-b3dc-8cdd9af34075.mp4
 
 # Different Output Waveforms
 
@@ -75,9 +75,7 @@ The speaker ISR was modified to use the shape in a Switch-Case statement to dete
 
 ## Demonstration Video
 
-<video width="320" height="240" controls>
-  <source src="./vid/waveforms.mp4" type="video/mp4">
-</video>
+https://user-images.githubusercontent.com/59746049/227383796-2a96231c-7dc4-45ef-8f43-c731b9d578e4.mp4
 
 # Polyphony
 
@@ -95,9 +93,7 @@ During the loop which adds to the accumulators, the accumulators are also used t
 
 ## Demonstration Video
 
-<video width="320" height="240" controls>
-  <source src="./vid/polyphony.mp4" type="video/mp4">
-</video>
+https://user-images.githubusercontent.com/59746049/227383833-22b7f5ff-3641-4768-bb61-938833e30829.mp4
 
 # CAN Auto Detection
 
@@ -131,9 +127,7 @@ Every cycle of the KeyScanner task, all of the implemented input parameters are 
 
 ## Demonstration Video
 
-<video width="320" height="240" controls>
-  <source src="./vid/autoCAN.mp4" type="video/mp4">
-</video>
+Video is quite large, so it can be found within the repository at: vid/autoCAN.mp4
 
 # Analysis
 
