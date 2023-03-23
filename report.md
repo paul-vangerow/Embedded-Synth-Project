@@ -89,7 +89,7 @@ INSERT VIDEO LINK
 
 # CAN Auto Detection
 
-The final, main advanced feature added was the ability for boards to automatically be deteced and for board octaves to be dynamically scaled based on their location in relation to the main board - the designated leader. It allows one to stick boards together, have them be automatically detected and send their key press values to the leader board which will play them.
+The final, main advanced feature added was the ability for boards to automatically be deteced and for board octaves to be dynamically scaled based on their location in relation to the main board - the designated leader. It allows one to stick multiple boards together, have them be automatically detected and send their key press values to the leader board which will play them. Up to 5 boards can be connected up together: when connecting new boards, ideally connect one at a time.
 
 ## How It's Implemented
 
@@ -121,15 +121,21 @@ Every cycle of the KeyScanner task, all of the implemented input parameters are 
 
 INSERT VIDEO LINK
 
-## Analysis
+# Analysis
 
 ## Tasks Overview
 
-Each Task and ISR:
-- What it is 
-- What kind of method
-- Minimum Initiation (In a table)
-- Maximum Execution Time (In a Table)
+For the implementation of our Synthesiser we used multiple concurrent tasks with the following properties:
+
+| Task Name      | Task Type | Purpose                                 | Theoretical Minimum Initiation | Maximum Execution |
+| ---            | ---       | ---                                                                      | ---  | ---  |
+| Key Scanner    | Thread    | Reading key presses and transmitting them as CAN Messages.               |      |      |
+| Display Update | Thread    | Taking in information from other tasks and displaying it.                |      |      |
+| CAN TX         | Thread    | Sending out items from the CAN Out Queue                                 |      |      |
+| CAN RX         | Thread    | Interpreting and processing items from the CAN In Queue                  |      |      |
+| Speaker        | Interrupt | Sending voltage values to the DAC based on the desired sound to be played|      |      |
+| CAN_TX_ISR     | Interrupt | Free mutexes when CAN outboxes are available                             | N/A  | N/A  |
+| CAN_RX_ISR     | Interrupt | Enqueue recieved CAN messages into the IN Queue                          | N/A  | N/A  |
 
 ## Critical Instant Analysis
 
@@ -137,11 +143,35 @@ Each Task and ISR:
 
 ## Shared Dependencies
 
+### Thread Safety
+
+When working with this many concurrent tasks, the potential issue of race conditions becomes quite prevalent. As we had a number of variables accessed between different threads, we had to ensure there were no concurrent accesses. There were two main ways in which this was done: Semaphores and Atomic accesses. The following is a list of each shared variable, it's purpose and how it has been made thread safe.
+
+| Variable Name     | Purpose                                                         | Thread Safety Implementation |
+| ---               | ---                                                             | ---                          |
+| isLeader          | Stores the boards leadership status                             | Atomic Memory Access         |
+| current_board     | Mid-handshake - which board is next in the board detect array   | Atomic Memory Access         |
+| board_detect_array| Stores all of the detected boards                               | Semaphore                    |
+| board_ID          | Stores the boards Unique ID                                     | Atomic Memory Access         |
+| board_number      | Stores which index of the board array the current board is      | Atomic Memory Access         |
+| leader_number     | Stores which index of the board array the leader is             | Atomic Memory Access         |
+| number_of_boards  | Stores the total number of detected boards                      | Atomic Memory Access         |
+| localNotes        | Used for transmitting keypresses to the Display                 | Atomic Memory Access         |
+| OUT_EN            | Used for enabling / disabling the note press detection          | Atomic Memory Access         |
+| debounce          | Used for adding a timeout to the mute button                    | Atomic Memory Access         |
+| ticks             | Used for measuring the time for the debounce of the mute button | Atomic Memory Access         |
+| stepsActive32     | Stores the top 28 note values (1 bit per note )                 | Atomic Memory Access         |
+| stepsActive0      | Stores the botton 32 note values ( 1 bit per note )             | Atomic Memory Access         |
+| volume            | Stores the current volume of the leader                         | Atomic Memory Access         |
+| volume_store      | Used to temporarily store the volume when muted                 | Atomic Memory Access         |
+| shape             | Used to store the current shape of the leader                   | Atomic Memory Access         |
+| octave            | Used to store the current octave of the leader                  | Atomic Memory Access         |
+
+
+### Inter Task Blocking
+
 - Inter task blocking
 - How things are kept Thread safe 
-
-CPU Utilisation
-
 
 
 
