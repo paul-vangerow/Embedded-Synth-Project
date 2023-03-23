@@ -34,8 +34,6 @@ void setup() {
   delay(2000);
   Serial.println("Hello World");
 
-
-
   // Create RTOS Tasks
   #ifndef DISABLE_THREADS
 

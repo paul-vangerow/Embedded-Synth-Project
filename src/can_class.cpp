@@ -63,8 +63,9 @@
         // Nothing Connected (Make board its own leader)
         if ( (new_east_west[0] | new_east_west[1]) == 0){
             __atomic_store_n(&isLeader, true, __ATOMIC_RELAXED); // Set Board to New Leader
-            //delayMicroseconds(100);
+            delayMicroseconds(100);
             Display::initialise_display(); // Reinitialise the Screen
+            KeyScanner::activate_handshakes(); // [NEEDS TO GET MOVED. Currently Causing a Double Handshake]
             KeyScanner::OUT_ENABLE(); // New Leader Found, Continue operations
         } 
         // Something else is connected, determine overall leadership
@@ -75,7 +76,6 @@
             uint8_t RX_MESSAGE[8] = {'D', 'I', 'A'};
             addMessageToQueue(RX_MESSAGE); 
         }
-        KeyScanner::activate_handshakes(); // [NEEDS TO GET MOVED. Currently Causing a Double Handshake]
     }
 
     // Reset Leadership and Switch KeyScanner to check for changes in Neighbours
@@ -100,6 +100,8 @@
     void CAN_Class::sendEastMessage(){
         if (!__atomic_load_n(&inList, __ATOMIC_RELAXED)){ 
             __atomic_store_n(&inList, true, __ATOMIC_RELAXED); // Prevent Duplicate Boards
+
+            Serial.println("Sent East");
 
             xSemaphoreTake(Board_Array_Mutex, portMAX_DELAY);
             board_detect_array[__atomic_load_n(&CAN_Class::current_board, __ATOMIC_RELAXED)] = board_ID; // Add Board to List
@@ -138,8 +140,7 @@
         Serial.println("[DEBUG] Getting New Leader");
 
         // Reset Handshakes
-        KeyScanner::setOutMuxBit(0x5, HIGH);
-        KeyScanner::setOutMuxBit(0x6, HIGH);
+        KeyScanner::activate_handshakes();
 
         uint8_t board_num = 0;
 
@@ -299,6 +300,8 @@
             } else {
                 // Finish Message -- Tells board Handshaking is complete
                 if (RX_MESSAGE[0] == 'F'){
+
+                    Serial.println("Got fin!");
 
                     xSemaphoreTake(Board_Array_Mutex, portMAX_DELAY);
                     board_detect_array[RX_MESSAGE[2]] = RX_MESSAGE[1]; 
