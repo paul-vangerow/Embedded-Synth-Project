@@ -55,9 +55,7 @@ We used a software debounce algorithm. This involves using a timer to delay the 
 
 ## Demonstration Video
 
-<video width="320" height="240" controls>
-  <source src="[./vid/mute.mp4](https://github.com/paul-vangerow/synth_cw_2/blob/master/vid/mute.mp4)" type="video/mp4">
-</video>
+https://github.com/paul-vangerow/synth_cw_2/blob/48b8a1f40e46c5ce7efde75507d4bc5991d8db86/vid/mute.mp4
 
 # Different Output Waveforms
 
