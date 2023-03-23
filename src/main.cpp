@@ -8,10 +8,11 @@
 #include <can_class.h>
 
 //#define DISABLE_THREADS
+//#define CPU_USAGE_STATS_TEST
 unsigned long statsCounter;
 
 void statsTask(void *pvParameters){
-  const TickType_t xFrequency = 1000/portTICK_PERIOD_MS;
+  const TickType_t xFrequency = 5000/portTICK_PERIOD_MS;
   TickType_t xLastWakeTime = xTaskGetTickCount();
   while(1)
   {
@@ -42,6 +43,7 @@ void setup() {
   Speaker::initialise_speaker(); // Pin inits
   CAN_Class::initialise_CAN(false);
 
+  #ifdef CPU_USAGE_STATS_TEST
   TaskHandle_t StatsHandle = NULL;
   xTaskCreate(
     statsTask,		/* Function that implements the task */
@@ -51,13 +53,15 @@ void setup() {
     1,			/* Task priority */
     &StatsHandle /* Pointer to store the task handle */
   );
+  #endif
+
   TaskHandle_t RXTaskHandle = NULL;
   xTaskCreate(
     CAN_Class::RX_Task,		/* Function that implements the task */
     "RXTask",		/* Text name for the task */
     1024,      		/* Stack size in words, not bytes */
     NULL,			/* Parameter passed into the task */
-    4,			/* Task priority */
+    5,			/* Task priority */
     &RXTaskHandle /* Pointer to store the task handle */
   );
 
@@ -67,7 +71,7 @@ void setup() {
     "TXTask",		/* Text name for the task */
     1024,      		/* Stack size in words, not bytes */
     NULL,			/* Parameter passed into the task */
-    3,			/* Task priority */
+    4,			/* Task priority */
     &TXTaskHandle /* Pointer to store the task handle */
   );
 
@@ -77,7 +81,7 @@ void setup() {
     "scanKeys",		/* Text name for the task */
     1024,      		/* Stack size in words, not bytes */
     NULL,			/* Parameter passed into the task */
-    2,			/* Task priority */
+    3,			/* Task priority */
     &scanKeysHandle /* Pointer to store the task handle */
   );
 
@@ -87,7 +91,7 @@ void setup() {
     "displayUpdate",		/* Text name for the task */
     1024,      		/* Stack size in words, not bytes */
     NULL,			/* Parameter passed into the task */
-    1,			/* Task priority */
+    2,			/* Task priority */
     &displayUpdateHandle /* Pointer to store the task handle */
   );
 
@@ -184,6 +188,25 @@ void setup() {
 	Serial.println(micros()-startTime);
 	while(1);
   #endif
+
+  #ifdef TEST_CAN_RX_ISR
+  Serial.println("testing can rx ISR");
+  CAN_Class::initialise_CAN(true);
+  
+  uint8_t key_msg[8] = {'P'};
+  key_msg[0] = 'P';
+  key_msg[2] = 2*4+3;
+
+	uint32_t startTime = micros();
+	for (int iter = 0; iter < 32; iter++) {
+    CAN_TX(0x123, key_msg);
+		//CAN_Class::RX_
+	}
+	Serial.println(micros()-startTime);
+	while(1);
+  #endif
+
+
   Serial.println("threads disabled and no tests");
 }
 

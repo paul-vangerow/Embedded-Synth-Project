@@ -12,6 +12,8 @@
 
 //#define TEST_CAN_RX
 //#define TEST_CAN_TX
+//#define TEST_CAN_RX_ISR
+//#define TEST_CAN_TX_ISR
 
 class CAN_Class
 {

@@ -45,7 +45,7 @@
 
     // ISR for Receiving, Triggers everytime there is something in the CAN Inbox.
     void CAN_Class::CAN_RX_ISR (void) {
-        Serial.println("receiving in rx isr");
+        //Serial.println("receiving in rx isr");
         uint8_t RX_Message_ISR[8];
         uint32_t ID = 0x123;
         CAN_RX(ID, RX_Message_ISR);
