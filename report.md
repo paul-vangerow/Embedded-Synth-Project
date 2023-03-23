@@ -155,22 +155,26 @@ The processes meet their deadlines and can be scheduled using rate monotonic sch
 Measured with RTOS vTaskGetRunTimeStats() with micros() precision
 
 USAGE WHILE IDLE
-statsTask       1955428         2%
-IDLE            52443250        74%
-displayUpdate   12762808        18%
-scanKeys        2828623         4%
-RXTask          8067            <1%
-Tmr Svc         15              <1%
-TXTask          109             <1%
+| Task          | Total Execution Time /μs  | Percentage Utilisation /%|
+| --------------| --------------------------| -------------------------|
+|statsTask      |  1955428                  | 2                        |
+|IDLE           |  52443250                 | 74                       |
+|displayUpdate  |  12762808                 | 18                       |
+|scanKeys       |  2828623                  | 4                        |
+|RXTask         |  8067                     | <1                       |
+|Tmr Svc        |  15                       | <1                       |
+|TXTask         |  109                      | <1                       |
 
 WHILE ALL KEYS PRESSED REPEATEDLY AND KNOBS TURNED
-statsTask       427536          2%
-IDLE            13481899        67%
-displayUpdate   4141945         20%
-scanKeys        1942962         9%
-RXTask          10425           <1%
-Tmr Svc         15              <1%
-TXTask          109             <1%
+| Task          | Total Execution Time /μs  | Percentage Utilisation /%|
+| --------------| --------------------------| -------------------------|
+|statsTask      |  427536                   | 2                        |
+|IDLE           |  13481899                 | 67                       |
+|displayUpdate  |  4141945                  | 20                       |
+|scanKeys       |  1942962                  | 9                        |
+|RXTask         |  10425                    | <1                       |
+|Tmr Svc        |  15                       | <1                       |
+|TXTask         |  109                      | <1                       |
 
 Much more time is spent IDLE than on any task. This shows that our CPU usage is well within reasonable limits.
 
