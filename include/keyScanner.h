@@ -7,8 +7,8 @@
 #include <can_class.h>
 #include <exception>
 
+//#define TEST_SCANKEYS_INIT
 //#define TEST_SCANKEYS
-// Just Defines everything the object contains.
 
 class KeyScanner
 {

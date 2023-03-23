@@ -92,8 +92,8 @@
     //Function to set outputs using key matrix (For Initialising the Display)
     void KeyScanner::setOutMuxBit(const uint8_t bitIdx, const bool value) {
         
-        Serial.println("[DEBUG] Setting Bit: " + String(bitIdx) + " to " + String(value));
-        delay(100);
+        //delay(100);
+
         xSemaphoreTake(Mux_Mutex, portMAX_DELAY);
         try {
             digitalWrite(REN_PIN,LOW);
@@ -155,9 +155,13 @@
         bool init = true;
 
         while (1) {
-            #ifndef TEST_SCANKEYS
+            
+            #if !defined(TEST_SCANKEYS_INIT) && !defined(TEST_SCANKEYS)
             vTaskDelayUntil( &xLastWakeTime, xFrequency );
             #endif
+
+
+
 
             bool local_out_en = get_OUT_EN(); // Prevents the value from being changed during the loop
             uint8_t offset = 2;
@@ -243,16 +247,16 @@
             if ( (((EW_Detect[0] ^ prev_EW_Detect[0]) || (EW_Detect[1] ^ prev_EW_Detect[1])) && local_out_en) || init ){
                 init = false;
 
-                Serial.print(EW_Detect[0]);
-                Serial.print(" ");
-                Serial.println(EW_Detect[1]);
 
                 // Store new state
                 prev_EW_Detect[0] = EW_Detect[0];
                 prev_EW_Detect[1] = EW_Detect[1];
                 
                 // Should have kept record of the most recent state
+                #if defined(TEST_SCANKEYS_INIT)
                 CAN_Class::reconfirm_leader(EW_Detect);
+                #endif
+
             } else if (!local_out_en) { // All other Boards should be in this mode now too
                 if (EW_Detect[0] == 0){
                     if (EW_Detect[1] == 0){
@@ -262,7 +266,8 @@
                     }
                 }
             }
-            #ifdef TEST_SCANKEYS
+            //Serial.println("end of scan loop");
+            #if defined(TEST_SCANKEYS_INIT) || defined(TEST_SCANKEYS)
             break;
             #endif
         }

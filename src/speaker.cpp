@@ -69,7 +69,7 @@
                     mag_div = 3;
                     break;
                 case 2:
-                    total_vout += (point_val > 128) ? 255 : 0; // Square Wave 
+                    total_vout += (point_val > 2048) ? 4095 : 0; // Square Wave 
                     mag_div = 12;
                     break;
                 default:
