@@ -64,7 +64,7 @@ We tried to implement many advanced features, below are a discussion of how we i
 
 ### Creating a Mute Button
 
-A mute button is a button that allows a user to mute or silence an audio signal. In order to create a mute button in C++.
+A mute button is a button that allows a user to mute or silence an audio signal.
 
 When the button is pressed, the input pin will read a HIGH signal. We can then use a digital output pin to control the audio signal. When the button is pressed, the digital output pin will be set to LOW, which will silence the audio signal. When the button is released, the digital output pin will be set to HIGH, which will allow the audio signal to play.
 
