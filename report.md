@@ -203,8 +203,22 @@ When working with this many concurrent tasks, the potential issue of race condit
 
 ### Inter Task Blocking
 
-In our system, there is no real instance of inter task blocking. Every task runs concurrently and does not necessarily rely 
-on anything specific from other tasks since most memory accesses are 
+In our system, there are very few cases of inter task blocking and none of them are at all likely to cause a deadlock. 
+Blocking is typically a result of one task requiring a Semaphore or Mutex from another, however since the majority of our 
+tasks exclusively use atomic accesses this rarely becomes an issue. There are 3 occurances of semaphores in our code:
 
-- Inter task blocking
-- How things are kept Thread safe 
+1. CAN Class TX Semaphore, used to give the Transmitter access to the CAN outboxes when they become available.
+
+2. Board Array Mutex, used to ensure that read and writes to the board detect array by both the CAN_Class and 
+   KeyScanner don't cause a race condition.
+
+3. Mux Mutex, multiple classes sometimes try to use the setOutMuxBit function - this prevents them from causing any issues by 
+   writing to the same pin twice.
+
+Besides the TX mutex, these are used extremely rarely - only during handshaking and are therefore unlikely to cause any kind of deadlock.
+
+There is one kind of deadlock that does occur sometimes, but it is not due to tasks on the same board and usually relates more to
+tasks on different boards. Sometimes when boards are connected, they do not turn on their CAN in time (it takes a while for
+them to power on) - resulting in an EAST message that is never received. Since the board will wait indefinitely until it receives a FIN
+message, this can sometimes cause the entire system to freeze and need to be reset. Other than this very rare occurance, there should
+not be an issue however.
